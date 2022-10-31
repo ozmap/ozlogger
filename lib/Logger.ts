@@ -74,7 +74,7 @@ export class OZLogger {
 		}
 	}
 
-	protected static init(arg?: LoggerConfigOptions): OZLogger {
+	public static init(arg?: LoggerConfigOptions): OZLogger {
 		if (!OZLogger.instance && arg) OZLogger.instance = new OZLogger(arg);
 
 		return OZLogger.instance;
