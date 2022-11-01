@@ -50,7 +50,7 @@ export class OZLogger {
 			// send logs to MongoDB instance
 			this.logger.add(
 				new transports.MongoDB({
-					level: 'info',
+					level: server.level,
 					db: `mongodb://${dbCredentials}@${dbServers}/${server.database}`,
 					options: options,
 					collection: server.collection,
@@ -80,7 +80,7 @@ export class OZLogger {
 		return OZLogger.instance;
 	}
 
-	public static debug(msg: string, ...args: string[]): void {
+	public static async debug(msg: string, ...args: string[]): Promise<void> {
 		OZLogger.init().logger.log({
 			level: 'debug',
 			message: msg,
@@ -88,7 +88,7 @@ export class OZLogger {
 		});
 	}
 
-	public static http(msg: string, ...args: string[]): void {
+	public static async http(msg: string, ...args: string[]): Promise<void> {
 		OZLogger.init().logger.log({
 			level: 'http',
 			message: msg,
@@ -96,7 +96,7 @@ export class OZLogger {
 		});
 	}
 
-	public static info(msg: string, ...args: string[]): void {
+	public static async info(msg: string, ...args: string[]): Promise<void> {
 		OZLogger.init().logger.log({
 			level: 'info',
 			message: msg,
@@ -104,7 +104,7 @@ export class OZLogger {
 		});
 	}
 
-	public static warning(msg: string, ...args: string[]): void {
+	public static async warning(msg: string, ...args: string[]): Promise<void> {
 		OZLogger.init().logger.log({
 			level: 'warn',
 			message: msg,
@@ -112,7 +112,7 @@ export class OZLogger {
 		});
 	}
 
-	public static error(msg: string, ...args: string[]): void {
+	public static async error(msg: string, ...args: string[]): Promise<void> {
 		OZLogger.init().logger.log({
 			level: 'error',
 			message: msg,

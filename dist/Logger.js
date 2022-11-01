@@ -33,7 +33,7 @@ class OZLogger {
             // For production environments
             // send logs to MongoDB instance
             this.logger.add(new winston_1.transports.MongoDB({
-                level: 'info',
+                level: server.level,
                 db: `mongodb://${dbCredentials}@${dbServers}/${server.database}`,
                 options: options,
                 collection: server.collection,
@@ -55,35 +55,35 @@ class OZLogger {
             OZLogger.instance = new OZLogger(arg);
         return OZLogger.instance;
     }
-    static debug(msg, ...args) {
+    static async debug(msg, ...args) {
         OZLogger.init().logger.log({
             level: 'debug',
             message: msg,
             meta: { tags: args }
         });
     }
-    static http(msg, ...args) {
+    static async http(msg, ...args) {
         OZLogger.init().logger.log({
             level: 'http',
             message: msg,
             meta: { tags: args }
         });
     }
-    static info(msg, ...args) {
+    static async info(msg, ...args) {
         OZLogger.init().logger.log({
             level: 'info',
             message: msg,
             meta: { tags: args }
         });
     }
-    static warning(msg, ...args) {
+    static async warning(msg, ...args) {
         OZLogger.init().logger.log({
             level: 'warn',
             message: msg,
             meta: { tags: args }
         });
     }
-    static error(msg, ...args) {
+    static async error(msg, ...args) {
         OZLogger.init().logger.log({
             level: 'error',
             message: msg,

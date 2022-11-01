@@ -5,9 +5,9 @@ export declare class OZLogger {
     private logger;
     private constructor();
     static init(arg?: LoggerConfigOptions): OZLogger;
-    static debug(msg: string, ...args: string[]): void;
-    static http(msg: string, ...args: string[]): void;
-    static info(msg: string, ...args: string[]): void;
-    static warning(msg: string, ...args: string[]): void;
-    static error(msg: string, ...args: string[]): void;
+    static debug(msg: string, ...args: string[]): Promise<void>;
+    static http(msg: string, ...args: string[]): Promise<void>;
+    static info(msg: string, ...args: string[]): Promise<void>;
+    static warning(msg: string, ...args: string[]): Promise<void>;
+    static error(msg: string, ...args: string[]): Promise<void>;
 }

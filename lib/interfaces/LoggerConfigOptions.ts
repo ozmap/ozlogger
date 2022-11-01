@@ -12,6 +12,7 @@ export default interface LoggerConfigOptions {
 			port: number;
 			database: string;
 			collection: string;
+			level: string;
 		};
 		options: {
 			useUnifiedTopology: boolean;
