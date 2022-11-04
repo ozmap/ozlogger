@@ -1,7 +1,8 @@
 export default interface LoggerConfigOptions {
-	app: string;
-	filename: string;
-	level: string;
+	app: string; // Application name
+	filename: string; // Logs file name
+	maxsize?: number; // Logs file maximum size - MUST be in bytes
+	level: string; // Minimum level to be logged
 	mongo?: {
 		auth: {
 			user: string;
