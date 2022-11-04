@@ -19,9 +19,14 @@ class OZLogger {
                     : `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
             })),
             transports: [
-                new winston_1.transports.File({
-                    filename: config.filename
-                })
+                new winston_1.transports.File(config.maxsize
+                    ? {
+                        filename: config.filename,
+                        maxsize: config.maxsize
+                    }
+                    : {
+                        filename: config.filename
+                    })
             ],
             defaultMeta: { service: config.app }
         });

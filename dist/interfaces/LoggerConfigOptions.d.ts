@@ -1,6 +1,7 @@
 export default interface LoggerConfigOptions {
     app: string;
     filename: string;
+    maxsize?: number;
     level: string;
     mongo?: {
         auth: {

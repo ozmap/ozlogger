@@ -22,6 +22,7 @@ import { OZLogger } from '@devoz/logger';
 OZLogger.init({
 	app: 'test',
 	filename: 'app.log',
+	maxsize: 5120, // Bytes
 	level: 'debug'
 });
 

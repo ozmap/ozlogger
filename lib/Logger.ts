@@ -29,9 +29,16 @@ export class OZLogger {
 				})
 			),
 			transports: [
-				new transports.File({
-					filename: config.filename
-				})
+				new transports.File(
+					config.maxsize
+						? {
+								filename: config.filename,
+								maxsize: config.maxsize
+						  }
+						: {
+								filename: config.filename
+						  }
+				)
 			],
 			defaultMeta: { service: config.app }
 		});
