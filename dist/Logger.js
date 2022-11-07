@@ -81,7 +81,7 @@ class OZLogger {
             meta: { tags: args }
         });
     }
-    static async warning(msg, ...args) {
+    static async warn(msg, ...args) {
         OZLogger.init().logger.log({
             level: 'warn',
             message: msg,

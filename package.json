@@ -6,8 +6,8 @@
 	"scripts": {
 		"build": "tsc",
 		"test": "jest --watchAll --detectOpenHandles --verbose --coverage",
-		"lint": "eslint --ignore-path .gitignore --ext .js,.ts",
-		"format": "prettier --ignore-path .gitignore --write",
+		"lint": "eslint --ext .js,.ts",
+		"format": "prettier --write",
 		"prepare": "husky install"
 	},
 	"types": "dist/index.d.ts",
