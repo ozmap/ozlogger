@@ -9,7 +9,7 @@ The available methods are presented in level hierarchy order.
  - `debug(message: string, ...tags?: string[])`
  - `http(message: string, ...tags?: string[])`
  - `info(message: string, ...tags?: string[])`
- - `warning(message: string, ...tags?: string[])`
+ - `warn(message: string, ...tags?: string[])`
  - `error(message: string, ...tags?: string[])`
 
 ## Usage examples
