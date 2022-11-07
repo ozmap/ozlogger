@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
+STAGED_FILES="$(git diff --name-only --cached --diff-filter=AM)"
+
+node .husky/CI/scripts/pre-commit.js "$BRANCH_NAME" "$STAGED_FILES";

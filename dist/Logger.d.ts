@@ -8,6 +8,6 @@ export declare class OZLogger {
     static debug(msg: string, ...args: string[]): Promise<void>;
     static http(msg: string, ...args: string[]): Promise<void>;
     static info(msg: string, ...args: string[]): Promise<void>;
-    static warning(msg: string, ...args: string[]): Promise<void>;
+    static warn(msg: string, ...args: string[]): Promise<void>;
     static error(msg: string, ...args: string[]): Promise<void>;
 }

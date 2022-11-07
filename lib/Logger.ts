@@ -111,7 +111,7 @@ export class OZLogger {
 		});
 	}
 
-	public static async warning(msg: string, ...args: string[]): Promise<void> {
+	public static async warn(msg: string, ...args: string[]): Promise<void> {
 		OZLogger.init().logger.log({
 			level: 'warn',
 			message: msg,

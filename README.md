@@ -9,7 +9,7 @@ The available methods are presented in level hierarchy order.
  - `debug(message: string, ...tags?: string[])`
  - `http(message: string, ...tags?: string[])`
  - `info(message: string, ...tags?: string[])`
- - `warning(message: string, ...tags?: string[])`
+ - `warn(message: string, ...tags?: string[])`
  - `error(message: string, ...tags?: string[])`
 
 ## Usage examples
@@ -37,7 +37,7 @@ OZLogger.debug("Another test log", "Tag1");
 Another code snippet example shows the OZLogger configured
 to send the logs directly to a Mongo database instance:
 
-```javascrip
+```javascript
 import { OZLogger } from '@devoz/logger';
 
 // Mongo connection is only established
