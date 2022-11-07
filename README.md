@@ -37,7 +37,7 @@ OZLogger.debug("Another test log", "Tag1");
 Another code snippet example shows the OZLogger configured
 to send the logs directly to a Mongo database instance:
 
-```javascrip
+```javascript
 import { OZLogger } from '@devoz/logger';
 
 // Mongo connection is only established
