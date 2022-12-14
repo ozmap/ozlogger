@@ -1,0 +1,27 @@
+{
+	"opts": {
+		"readme": "README.md",
+		"destination": "docs/",
+		"access": "all",
+		"recurse": true
+	},
+    "plugins": ["jsdoc-plugin-typescript"],
+	"typescript": {
+		"moduleRoot": "."
+	},
+    "recurseDepth": 10,
+    "source": {
+        "exclude": ["node_modules/", "docs/"],
+        "includePattern": ".+(\\.js(doc|x)?|\\.ts(x)?)$",
+        "excludePattern": "(^|\\/|\\\\)_|(.+(\\.d\\.js(doc|x)?|\\.d\\.ts(x)?)$)"
+    },
+    "sourceType": "module",
+    "tags": {
+        "allowUnknownTags": true,
+        "dictionaries": ["jsdoc", "closure"]
+    },
+    "templates": {
+        "cleverLinks": false,
+        "monospaceLinks": false
+    }
+}

@@ -1,2 +1,11 @@
-.husky
+node_modules
+typings
+.idea
+.vscode
+.nyc_output
 dist
+build
+coverage
+docs
+README.md
+**/*.md

@@ -1,14 +1,51 @@
-import { createLogger, format, transports, Logger } from 'winston';
+import {
+	createLogger,
+	format,
+	transports,
+	Logger as WinstonLogger
+} from 'winston';
 import 'winston-mongodb';
+import { format as formatString } from 'node:util';
 
 import LoggerConfigOptions from './interfaces/LoggerConfigOptions';
 import MongoTransportOptions from './interfaces/MongoTransportOptions';
 
+/**
+ * OZLogger module class.
+ *
+ * @class
+ */
 export class OZLogger {
+	/**
+	 * Stores the Logger object instance.
+	 *
+	 * @static
+	 * @member { OZLogger }
+	 */
 	private static instance: OZLogger;
 
-	private logger: Logger;
+	/**
+	 * Temporary storage for log tags.
+	 *
+	 * @static
+	 * @member { string[] }
+	 */
+	private static tags?: string[];
 
+	/**
+	 * Stores the Winston Logger instance.
+	 *
+	 * @member { WinstonLogger }
+	 */
+	private logger: WinstonLogger;
+
+	/**
+	 * Logger module class constructor.
+	 *
+	 * @class
+	 * @param   { LoggerConfigOptions }  config  Logger module configuration options.
+	 * @returns { this }  Logger module class object.
+	 */
 	private constructor(config: LoggerConfigOptions) {
 		this.logger = createLogger({
 			level: config.level,
@@ -20,24 +57,25 @@ export class OZLogger {
 				format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
 				format.errors({ stack: true }),
 				format.printf(({ timestamp, level, label, message, meta }) => {
+					let { tags } = meta;
+
+					if (tags && tags.length) tags = tags.join(' ');
+
 					// Custom logging format string
-					return meta.tags?.length
-						? `(${timestamp}) ${level.toUpperCase()}: ${label} [${meta.tags.join(
-								' '
-						  )}] ${message}`
+					return tags
+						? `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags}] ${message}`
 						: `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
 				})
 			),
 			transports: [
+				// Default log transport
 				new transports.File(
-					config.maxsize
-						? {
-								filename: config.filename,
-								maxsize: config.maxsize
-						  }
-						: {
-								filename: config.filename
-						  }
+					Object.assign(
+						{
+							filename: config.filename
+						},
+						config.maxsize ? { maxsize: config.maxsize } : {}
+					)
 				)
 			],
 			defaultMeta: { service: config.app }
@@ -75,55 +113,127 @@ export class OZLogger {
 			// also send output to the console
 			this.logger.add(
 				new transports.Console({
-					format: format.combine(format.colorize({ all: true }))
+					format: format.combine(
+						format.colorize({
+							all: true,
+							colors: {
+								debug: 'blue',
+								info: 'green',
+								http: 'cyan',
+								warn: 'yellow',
+								error: 'red'
+							}
+						})
+					)
 				})
 			);
 		}
 	}
 
+	/**
+	 * Abstract logging method for internal use only.
+	 *
+	 * @param   { string }      level  Log message level.
+	 * @param   { ...unknown }  data   Data to be processed and logged.
+	 * @returns { void }
+	 */
+	private log(level: string, ...data: unknown[]): void {
+		let tags: string[] | null = null;
+
+		if (OZLogger.tags) {
+			tags = OZLogger.tags;
+			delete OZLogger.tags;
+		}
+
+		const message = data
+			.map((el) => (typeof el !== 'string' ? formatString('%O', el) : el))
+			.join(' ');
+
+		this.logger.log({
+			level,
+			message,
+			meta: { tags }
+		});
+	}
+
+	/**
+	 * Logger module initializer method.
+	 *
+	 * @static
+	 * @param   { LoggerConfigOptions }  arg  Logger module configuration options.
+	 * @returns { OZLogger }  Logger module object instance.
+	 */
 	public static init(arg?: LoggerConfigOptions): OZLogger {
-		if (!OZLogger.instance && arg) OZLogger.instance = new OZLogger(arg);
+		if (!this.instance && arg) this.instance = new this(arg);
 
-		return OZLogger.instance;
+		return this.instance;
 	}
 
-	public static async debug(msg: string, ...args: string[]): Promise<void> {
-		OZLogger.init().logger.log({
-			level: 'debug',
-			message: msg,
-			meta: { tags: args }
-		});
+	/**
+	 * Method to tag log messages.
+	 *
+	 * @static
+	 * @param   { ...string }  tags  Strings to tag the log message.
+	 * @returns { OZLogger }  Logger module object instance.
+	 */
+	public static tag(...tags: string[]): typeof OZLogger {
+		OZLogger.tags = tags;
+
+		return OZLogger;
 	}
 
-	public static async http(msg: string, ...args: string[]): Promise<void> {
-		OZLogger.init().logger.log({
-			level: 'http',
-			message: msg,
-			meta: { tags: args }
-		});
+	/**
+	 * Debug logging method.
+	 *
+	 * @static
+	 * @param   { ...unknown }  args  Data to be logged.
+	 * @returns { void }
+	 */
+	public static async debug(...args: unknown[]): Promise<void> {
+		this.instance.log('debug', ...args);
 	}
 
-	public static async info(msg: string, ...args: string[]): Promise<void> {
-		OZLogger.init().logger.log({
-			level: 'info',
-			message: msg,
-			meta: { tags: args }
-		});
+	/**
+	 * HTTP request logging method.
+	 *
+	 * @static
+	 * @param   { ...unknown }  args  Data to be logged.
+	 * @returns { void }
+	 */
+	public static async http(...args: unknown[]): Promise<void> {
+		this.instance.log('http', ...args);
 	}
 
-	public static async warn(msg: string, ...args: string[]): Promise<void> {
-		OZLogger.init().logger.log({
-			level: 'warn',
-			message: msg,
-			meta: { tags: args }
-		});
+	/**
+	 * Information logging method.
+	 *
+	 * @static
+	 * @param   { ...unknown }  args  Data to be logged.
+	 * @returns { void }
+	 */
+	public static async info(...args: unknown[]): Promise<void> {
+		this.instance.log('info', ...args);
 	}
 
-	public static async error(msg: string, ...args: string[]): Promise<void> {
-		OZLogger.init().logger.log({
-			level: 'error',
-			message: msg,
-			meta: { tags: args }
-		});
+	/**
+	 * Warning logging method.
+	 *
+	 * @static
+	 * @param   { ...unknown }  args  Data to be logged.
+	 * @returns { void }
+	 */
+	public static async warn(...args: unknown[]): Promise<void> {
+		this.instance.log('warn', ...args);
+	}
+
+	/**
+	 * Error logging method.
+	 *
+	 * @static
+	 * @param   { ...unknown }  args  Data to be logged.
+	 * @returns { void }
+	 */
+	public static async error(...args: unknown[]): Promise<void> {
+		this.instance.log('error', ...args);
 	}
 }

@@ -3,7 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OZLogger = void 0;
 const winston_1 = require("winston");
 require("winston-mongodb");
+const node_util_1 = require("node:util");
+/**
+ * OZLogger module class.
+ *
+ * @class
+ */
 class OZLogger {
+    /**
+     * Logger module class constructor.
+     *
+     * @class
+     * @param   { LoggerConfigOptions }  config  Logger module configuration options.
+     * @returns { this }  Logger module class object.
+     */
     constructor(config) {
         var _a, _b;
         this.logger = (0, winston_1.createLogger)({
@@ -12,21 +25,19 @@ class OZLogger {
                 label: (_a = config.app) === null || _a === void 0 ? void 0 : _a.toUpperCase(),
                 message: false
             }), winston_1.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.format.errors({ stack: true }), winston_1.format.printf(({ timestamp, level, label, message, meta }) => {
-                var _a;
+                let { tags } = meta;
+                if (tags && tags.length)
+                    tags = tags.join(' ');
                 // Custom logging format string
-                return ((_a = meta.tags) === null || _a === void 0 ? void 0 : _a.length)
-                    ? `(${timestamp}) ${level.toUpperCase()}: ${label} [${meta.tags.join(' ')}] ${message}`
+                return tags
+                    ? `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags}] ${message}`
                     : `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
             })),
             transports: [
-                new winston_1.transports.File(config.maxsize
-                    ? {
-                        filename: config.filename,
-                        maxsize: config.maxsize
-                    }
-                    : {
-                        filename: config.filename
-                    })
+                // Default log transport
+                new winston_1.transports.File(Object.assign({
+                    filename: config.filename
+                }, config.maxsize ? { maxsize: config.maxsize } : {}))
             ],
             defaultMeta: { service: config.app }
         });
@@ -51,49 +62,113 @@ class OZLogger {
             // For non-production environments
             // also send output to the console
             this.logger.add(new winston_1.transports.Console({
-                format: winston_1.format.combine(winston_1.format.colorize({ all: true }))
+                format: winston_1.format.combine(winston_1.format.colorize({
+                    all: true,
+                    colors: {
+                        debug: 'blue',
+                        info: 'green',
+                        http: 'cyan',
+                        warn: 'yellow',
+                        error: 'red'
+                    }
+                }))
             }));
         }
     }
+    /**
+     * Abstract logging method for internal use only.
+     *
+     * @param   { string }      level  Log message level.
+     * @param   { ...unknown }  data   Data to be processed and logged.
+     * @returns { void }
+     */
+    log(level, ...data) {
+        let tags = null;
+        if (OZLogger.tags) {
+            tags = OZLogger.tags;
+            delete OZLogger.tags;
+        }
+        const message = data
+            .map((el) => (typeof el !== 'string' ? (0, node_util_1.format)('%O', el) : el))
+            .join(' ');
+        this.logger.log({
+            level,
+            message,
+            meta: { tags }
+        });
+    }
+    /**
+     * Logger module initializer method.
+     *
+     * @static
+     * @param   { LoggerConfigOptions }  arg  Logger module configuration options.
+     * @returns { OZLogger }  Logger module object instance.
+     */
     static init(arg) {
-        if (!OZLogger.instance && arg)
-            OZLogger.instance = new OZLogger(arg);
-        return OZLogger.instance;
+        if (!this.instance && arg)
+            this.instance = new this(arg);
+        return this.instance;
     }
-    static async debug(msg, ...args) {
-        OZLogger.init().logger.log({
-            level: 'debug',
-            message: msg,
-            meta: { tags: args }
-        });
+    /**
+     * Method to tag log messages.
+     *
+     * @static
+     * @param   { ...string }  tags  Strings to tag the log message.
+     * @returns { OZLogger }  Logger module object instance.
+     */
+    static tag(...tags) {
+        OZLogger.tags = tags;
+        return OZLogger;
     }
-    static async http(msg, ...args) {
-        OZLogger.init().logger.log({
-            level: 'http',
-            message: msg,
-            meta: { tags: args }
-        });
+    /**
+     * Debug logging method.
+     *
+     * @static
+     * @param   { ...unknown }  args  Data to be logged.
+     * @returns { void }
+     */
+    static async debug(...args) {
+        this.instance.log('debug', ...args);
     }
-    static async info(msg, ...args) {
-        OZLogger.init().logger.log({
-            level: 'info',
-            message: msg,
-            meta: { tags: args }
-        });
+    /**
+     * HTTP request logging method.
+     *
+     * @static
+     * @param   { ...unknown }  args  Data to be logged.
+     * @returns { void }
+     */
+    static async http(...args) {
+        this.instance.log('http', ...args);
     }
-    static async warn(msg, ...args) {
-        OZLogger.init().logger.log({
-            level: 'warn',
-            message: msg,
-            meta: { tags: args }
-        });
+    /**
+     * Information logging method.
+     *
+     * @static
+     * @param   { ...unknown }  args  Data to be logged.
+     * @returns { void }
+     */
+    static async info(...args) {
+        this.instance.log('info', ...args);
     }
-    static async error(msg, ...args) {
-        OZLogger.init().logger.log({
-            level: 'error',
-            message: msg,
-            meta: { tags: args }
-        });
+    /**
+     * Warning logging method.
+     *
+     * @static
+     * @param   { ...unknown }  args  Data to be logged.
+     * @returns { void }
+     */
+    static async warn(...args) {
+        this.instance.log('warn', ...args);
+    }
+    /**
+     * Error logging method.
+     *
+     * @static
+     * @param   { ...unknown }  args  Data to be logged.
+     * @returns { void }
+     */
+    static async error(...args) {
+        this.instance.log('error', ...args);
     }
 }
 exports.OZLogger = OZLogger;

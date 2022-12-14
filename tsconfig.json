@@ -8,8 +8,9 @@
 		"target": "es2019",
 		"lib": ["es2019"],
 		"declaration": true,
-		"outDir": "./dist",
+		"outDir": "dist",
 
+		"moduleResolution": "node",
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"strict": true,
@@ -17,6 +18,6 @@
 		"types": ["node", "jest"]
 	},
 
-	"include": ["lib/**/*"],
+	"include": ["lib/**/*.ts"],
 	"exclude": ["**/*.test.*"]
 }
