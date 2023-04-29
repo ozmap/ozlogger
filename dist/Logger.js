@@ -72,8 +72,8 @@ class OZLogger {
             this.transports.push(new winston_1.transports.MongoDB(setup));
         }
         this.logger = (0, winston_1.createLogger)({
-            defaultMeta: { service: config.app },
-            transports: this.transports
+            transports: this.transports,
+            defaultMeta: { service: config.app }
         });
     }
     /**

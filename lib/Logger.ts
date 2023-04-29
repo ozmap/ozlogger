@@ -115,8 +115,8 @@ export class OZLogger {
 		}
 
 		this.logger = createLogger({
-			defaultMeta: { service: config.app },
-			transports: this.transports
+			transports: this.transports,
+			defaultMeta: { service: config.app }
 		});
 	}
 
