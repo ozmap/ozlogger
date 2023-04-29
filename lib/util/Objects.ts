@@ -60,7 +60,10 @@ export function mask<T = { [key: string]: unknown }>(
  * @param   { string | string[] }  fields    Key names to be removed.
  * @returns { object }  The filtered object.
  */
-export function filter<T = { [key: string]: unknown }>(original: object, fields: string | string[]): T {
+export function filter<T = { [key: string]: unknown }>(
+	original: object,
+	fields: string | string[]
+): T {
 	if (typeof fields === 'string') fields = fields.trim().split(/\s+/);
 
 	// Lookup table used to reduce the time complexity for
