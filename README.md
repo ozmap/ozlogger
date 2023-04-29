@@ -21,9 +21,8 @@ import { OZLogger } from '@ozmap/logger';
 // Initialize and configure the logging facility
 OZLogger.init({
 	app: 'test',
-	filename: 'app.log',
-	maxsize: 10240, // Bytes
-	level: 'debug'
+	level: 'debug',
+    targets: ['stdout']
 });
 
 
@@ -50,19 +49,19 @@ process.env.NODE_ENV = 'prod';
 // facility with the Mongo transport
 OZLogger.init({
 	app: 'test',
-	filename: 'app.log',
 	level: 'debug',
+    targets: ['mongo'],
 	mongo: {
-		auth: {
-			user: 'username',
-			pass: 'password'
-		},
 		server: {
 			host: 'localhost',
 			port: 27017,
-			database: 'isis_ng',
+			database: 'application',
 			collection: 'ozlogs',
 			level: 'info'
+		},
+		auth: {
+			user: 'username',
+			pass: 'password'
 		},
 		options: {
 			useUnifiedTopology: true,
