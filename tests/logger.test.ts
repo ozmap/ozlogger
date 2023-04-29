@@ -48,4 +48,21 @@ describe('OZLogger Class test suite.', () => {
 		expect(typeof OZLogger['error'] === 'function').toBe(true);
 		expect(() => OZLogger.error('error message log')).not.toThrow(Error);
 	});
+
+	test('OZLogger must have tag method and it must be chainable.', () => {
+		expect(typeof OZLogger['tag'] === 'function').toBe(true);
+		expect(() =>
+			OZLogger.tag('TAGS').debug('chainable tag method')
+		).not.toThrow(Error);
+	});
+
+	test('Logger must have time method.', () => {
+		expect(typeof OZLogger['time'] === 'function').toBe(true);
+		expect(() => OZLogger.time('timer')).not.toThrow(Error);
+	});
+
+	test('Logger must have timeEnd method.', () => {
+		expect(typeof OZLogger['timeEnd'] === 'function').toBe(true);
+		expect(() => OZLogger.timeEnd('timer')).not.toThrow(Error);
+	});
 });

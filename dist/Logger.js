@@ -82,7 +82,6 @@ class OZLogger {
     updateLogLevelAtRuntime() {
         setInterval(() => {
             const level = (0, Helpers_1.env)('OZLOGGER_LEVEL') || this.level;
-            console.log('Updating log levels...'); // DEBUG
             for (let i = 0; i < this.transports.length; ++i) {
                 if (this.transports[i].level !== level)
                     this.transports[i].level = level;
