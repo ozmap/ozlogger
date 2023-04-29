@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "tsc",
 		"docs": "jsdoc -c .jsdocrc dist/",
-		"test": "jest",
+		"test": "jest --detectOpenHandles",
 		"lint": "eslint --ext .js,.ts",
 		"format": "prettier --write",
 		"prepare": "husky install"

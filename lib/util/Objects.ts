@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash } from 'crypto';
 
 /**
  * Utility function for obfuscating values in objects.
@@ -8,11 +8,11 @@ import { createHash } from 'node:crypto';
  * @param   { string }             char      The character used when masking values.
  * @returns { object }  The obfuscated object.
  */
-export function mask(
-	original: object,
+export function mask<T = { [key: string]: unknown }>(
+	original: T,
 	fields: string | string[],
 	char = '*'
-): object {
+): T {
 	if (typeof fields === 'string') fields = fields.trim().split(/\s+/);
 
 	// Lookup table used to reduce the time complexity for
@@ -21,7 +21,7 @@ export function mask(
 		return { ...acc, [val]: true };
 	}, {});
 
-	const walk = (data: object | unknown): unknown => {
+	const walk = (data: { [key: string]: unknown } | unknown): unknown => {
 		// If the passed in element is not an object
 		// we've reached the end of the recursive call
 		if (!data || typeof data !== 'object') return data;
@@ -50,7 +50,7 @@ export function mask(
 
 	const { ...copy } = original;
 
-	return walk(copy) as object;
+	return walk(copy) as T;
 }
 
 /**
@@ -60,7 +60,7 @@ export function mask(
  * @param   { string | string[] }  fields    Key names to be removed.
  * @returns { object }  The filtered object.
  */
-export function filter(original: object, fields: string | string[]): object {
+export function filter<T = { [key: string]: unknown }>(original: object, fields: string | string[]): T {
 	if (typeof fields === 'string') fields = fields.trim().split(/\s+/);
 
 	// Lookup table used to reduce the time complexity for
@@ -69,7 +69,7 @@ export function filter(original: object, fields: string | string[]): object {
 		return { ...acc, [val]: true };
 	}, {});
 
-	const walk = (data: object | unknown): unknown => {
+	const walk = (data: { [key: string]: unknown } | unknown): unknown => {
 		// If the passed in element is not an object
 		// we've reached the end of the recursive call
 		if (!data || typeof data !== 'object') return data;
@@ -89,5 +89,5 @@ export function filter(original: object, fields: string | string[]): object {
 
 	const { ...copy } = original;
 
-	return walk(copy) as object;
+	return walk(copy) as T;
 }

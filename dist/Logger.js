@@ -3,94 +3,105 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OZLogger = void 0;
 const winston_1 = require("winston");
 require("winston-mongodb");
-const node_util_1 = require("node:util");
+const format_1 = require("./format");
+const Helpers_1 = require("./util/Helpers");
 /**
  * OZLogger module class.
- *
- * @class
  */
 class OZLogger {
     /**
      * Logger module class constructor.
      *
-     * @class
-     * @param   { LoggerConfigOptions }  config  Logger module configuration options.
-     * @returns { this }  Logger module class object.
+     * @param  config  Logger module configuration options.
      */
     constructor(config) {
-        var _a, _b;
-        this.logger = (0, winston_1.createLogger)({
-            level: config.level,
-            format: winston_1.format.combine(winston_1.format.label({
-                label: (_a = config.app) === null || _a === void 0 ? void 0 : _a.toUpperCase(),
-                message: false
-            }), winston_1.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.format.errors({ stack: true }), winston_1.format.printf(({ timestamp, level, label, message, meta }) => {
-                let { tags } = meta;
-                if (tags && tags.length)
-                    tags = tags.join(' ');
-                // Custom logging format string
-                return tags
-                    ? `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags}] ${message}`
-                    : `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
-            })),
-            transports: [
-                // Default log transport
-                new winston_1.transports.File(Object.assign({
-                    filename: config.filename
-                }, config.maxsize ? { maxsize: config.maxsize } : {}))
-            ],
-            defaultMeta: { service: config.app }
-        });
-        if (((_b = process.env.NODE_ENV) === null || _b === void 0 ? void 0 : _b.match(/^(prod|production)$/)) &&
-            config.mongo) {
-            const { auth, server, options } = config.mongo;
-            const dbCredentials = `${encodeURIComponent(auth.user)}:${encodeURIComponent(auth.pass)}`;
-            const dbServers = `${server.host}:${server.port}`;
-            // For production environments
-            // send logs to MongoDB instance
-            this.logger.add(new winston_1.transports.MongoDB({
-                level: server.level,
-                db: `mongodb://${dbCredentials}@${dbServers}/${server.database}`,
-                options: options,
-                collection: server.collection,
-                storeHost: true,
+        /**
+         * Stores the transports for Winston.
+         */
+        this.transports = [];
+        let setup;
+        this.level = config.level; // Default
+        if ((0, Helpers_1.includes)(config.targets, 'stdout')) {
+            setup = {
+                level: this.level
+            };
+            if (config.stdout && config.stdout.output === 'json') {
+                setup.format = (0, format_1.Json)(config.app, (0, Helpers_1.color)());
+            }
+            else {
+                setup.format = (0, format_1.Text)(config.app, (0, Helpers_1.color)());
+            }
+            this.transports.push(new winston_1.transports.Console(setup));
+        }
+        if ((0, Helpers_1.includes)(config.targets, 'file')) {
+            setup = {
+                level: this.level,
+                decolorize: true
+            };
+            if (config.file) {
+                setup.filename = config.file.filename;
+                setup.format =
+                    config.file.output === 'json'
+                        ? (0, format_1.Json)(config.app)
+                        : (0, format_1.Text)(config.app);
+                if (config.file.maxsize)
+                    setup.maxsize = config.file.maxsize;
+            }
+            else {
+                setup.filename = `${config.app}.log`;
+                setup.format = (0, format_1.Text)(config.app, (0, Helpers_1.color)());
+            }
+            this.transports.push(new winston_1.transports.File(setup));
+        }
+        if ((0, Helpers_1.includes)(config.targets, 'mongo') && config.mongo) {
+            setup = {
+                level: this.level,
                 decolorize: true,
-                format: winston_1.format.combine(winston_1.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.format.metadata(), winston_1.format.json())
-            }));
+                options: config.mongo.options || {},
+                collection: config.mongo.server.collection,
+                storeHost: true,
+                format: (0, format_1.Json)(config.app)
+            };
+            const servers = `${config.mongo.server.host}:${config.mongo.server.port}`;
+            if (config.mongo.auth) {
+                setup.db = `mongodb://${encodeURIComponent(config.mongo.auth.user)}:${encodeURIComponent(config.mongo.auth.pass)}@${servers}/${config.mongo.server.database}`;
+            }
+            else {
+                setup.db = `mongodb://${servers}/${config.mongo.server.database}`;
+            }
+            this.transports.push(new winston_1.transports.MongoDB(setup));
         }
-        else {
-            // For non-production environments
-            // also send output to the console
-            this.logger.add(new winston_1.transports.Console({
-                format: winston_1.format.combine(winston_1.format.colorize({
-                    all: true,
-                    colors: {
-                        debug: 'blue',
-                        info: 'green',
-                        http: 'cyan',
-                        warn: 'yellow',
-                        error: 'red'
-                    }
-                }))
-            }));
-        }
+        this.logger = (0, winston_1.createLogger)({
+            defaultMeta: { service: config.app },
+            transports: this.transports
+        });
+    }
+    /**
+     * Method for updating log levels at runtime.
+     */
+    updateLogLevelAtRuntime() {
+        setInterval(() => {
+            const level = (0, Helpers_1.env)('OZLOGGER_LEVEL') || this.level;
+            console.log('Updating log levels...'); // DEBUG
+            for (let i = 0; i < this.transports.length; ++i) {
+                if (this.transports[i].level !== level)
+                    this.transports[i].level = level;
+            }
+        }, 2500); // milliseconds
     }
     /**
      * Abstract logging method for internal use only.
      *
-     * @param   { string }      level  Log message level.
-     * @param   { ...unknown }  data   Data to be processed and logged.
-     * @returns { void }
+     * @param  level  Log message level.
+     * @param  data   Data to be processed and logged.
      */
     log(level, ...data) {
-        let tags = null;
-        if (OZLogger.tags) {
-            tags = OZLogger.tags;
-            delete OZLogger.tags;
+        const tags = OZLogger.tags;
+        OZLogger.tags = undefined;
+        let message = '';
+        for (let i = 0; i < data.length; ++i) {
+            message += (0, Helpers_1.stringify)(data[i]);
         }
-        const message = data
-            .map((el) => (typeof el !== 'string' ? (0, node_util_1.format)('%O', el) : el))
-            .join(' ');
         this.logger.log({
             level,
             message,
@@ -100,32 +111,59 @@ class OZLogger {
     /**
      * Logger module initializer method.
      *
-     * @static
-     * @param   { LoggerConfigOptions }  arg  Logger module configuration options.
-     * @returns { OZLogger }  Logger module object instance.
+     * @param   arg  Logger module configuration options.
+     * @returns Logger module object instance.
      */
     static init(arg) {
-        if (!this.instance && arg)
+        if (!this.instance && arg) {
             this.instance = new this(arg);
+            if (arg.dynamic)
+                this.instance.updateLogLevelAtRuntime();
+        }
         return this.instance;
+    }
+    /**
+     * Method for tracking execution time.
+     *
+     * @param   id  Timer identifier tag.
+     * @returns Logger module object instance.
+     */
+    static time(id) {
+        // Validation guard for already used identifier
+        if (this.timers.has(id))
+            throw new Error(`Identifier ${id} is in use`);
+        this.timers.set(id, Date.now());
+        return this;
+    }
+    /**
+     * Method for retrieving tracked execution time.
+     *
+     * @param   id  Timer identifier tag.
+     * @returns Logger module object instance.
+     */
+    static timeEnd(id) {
+        // Validation guard for unknown ID
+        if (!this.timers.has(id))
+            throw new Error(`Undefined identifier ${id}`);
+        const time = Date.now() - this.timers.get(id);
+        this.timers.delete(id); // Cleanup
+        this.instance.log('info', `${id}: ${time} ms`);
+        return this;
     }
     /**
      * Method to tag log messages.
      *
-     * @static
-     * @param   { ...string }  tags  Strings to tag the log message.
-     * @returns { OZLogger }  Logger module object instance.
+     * @param   tags  Strings to tag the log message.
+     * @returns Logger module object instance.
      */
     static tag(...tags) {
-        OZLogger.tags = tags;
-        return OZLogger;
+        this.tags = tags;
+        return this;
     }
     /**
      * Debug logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static async debug(...args) {
         this.instance.log('debug', ...args);
@@ -133,9 +171,7 @@ class OZLogger {
     /**
      * HTTP request logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static async http(...args) {
         this.instance.log('http', ...args);
@@ -143,9 +179,7 @@ class OZLogger {
     /**
      * Information logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static async info(...args) {
         this.instance.log('info', ...args);
@@ -153,9 +187,7 @@ class OZLogger {
     /**
      * Warning logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static async warn(...args) {
         this.instance.log('warn', ...args);
@@ -163,12 +195,14 @@ class OZLogger {
     /**
      * Error logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static async error(...args) {
         this.instance.log('error', ...args);
     }
 }
 exports.OZLogger = OZLogger;
+/**
+ * Temporary storage for timers.
+ */
+OZLogger.timers = new Map();

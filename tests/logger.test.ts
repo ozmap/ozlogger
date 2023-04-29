@@ -1,12 +1,19 @@
 import { expect, test } from '@jest/globals';
 import { OZLogger } from '../lib';
-import LoggerConfigOptions from '../lib/interfaces/LoggerConfigOptions';
+import LoggerConfigOptions from '../lib/util/interface/LoggerConfigOptions';
 
 // Configuration payload for the OZLogger
 const config: LoggerConfigOptions = {
 	app: 'OZLogger',
-	filename: 'logs/test.log',
-	level: 'DEBUG'
+	level: 'DEBUG',
+	targets: ['stdout', 'file'],
+	stdout: {
+		output: 'text'
+	},
+	file: {
+		filename: 'logs/test.log',
+		output: 'text'
+	}
 };
 
 describe('OZLogger Class test suite.', () => {

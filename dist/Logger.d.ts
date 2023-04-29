@@ -1,101 +1,107 @@
+import { transport as Transport, Logger as WinstonLogger } from 'winston';
 import 'winston-mongodb';
-import LoggerConfigOptions from './interfaces/LoggerConfigOptions';
+import LoggerConfigOptions from './util/interface/LoggerConfigOptions';
 /**
  * OZLogger module class.
- *
- * @class
  */
 export declare class OZLogger {
     /**
      * Stores the Logger object instance.
-     *
-     * @static
-     * @member { OZLogger }
      */
     private static instance;
     /**
+     * Temporary storage for timers.
+     */
+    private static timers;
+    /**
      * Temporary storage for log tags.
-     *
-     * @static
-     * @member { string[] }
      */
     private static tags?;
     /**
      * Stores the Winston Logger instance.
-     *
-     * @member { WinstonLogger }
      */
-    private logger;
+    protected logger: WinstonLogger;
+    /**
+     * Stores the transports for Winston.
+     */
+    protected transports: Transport[];
+    /**
+     * Default log level for all transports.
+     */
+    protected level: string;
     /**
      * Logger module class constructor.
      *
-     * @class
-     * @param   { LoggerConfigOptions }  config  Logger module configuration options.
-     * @returns { this }  Logger module class object.
+     * @param  config  Logger module configuration options.
      */
     private constructor();
     /**
+     * Method for updating log levels at runtime.
+     */
+    private updateLogLevelAtRuntime;
+    /**
      * Abstract logging method for internal use only.
      *
-     * @param   { string }      level  Log message level.
-     * @param   { ...unknown }  data   Data to be processed and logged.
-     * @returns { void }
+     * @param  level  Log message level.
+     * @param  data   Data to be processed and logged.
      */
     private log;
     /**
      * Logger module initializer method.
      *
-     * @static
-     * @param   { LoggerConfigOptions }  arg  Logger module configuration options.
-     * @returns { OZLogger }  Logger module object instance.
+     * @param   arg  Logger module configuration options.
+     * @returns Logger module object instance.
      */
-    static init(arg?: LoggerConfigOptions): OZLogger;
+    static init(arg: LoggerConfigOptions): OZLogger;
+    /**
+     * Method for tracking execution time.
+     *
+     * @param   id  Timer identifier tag.
+     * @returns Logger module object instance.
+     */
+    static time(id: string): typeof OZLogger;
+    /**
+     * Method for retrieving tracked execution time.
+     *
+     * @param   id  Timer identifier tag.
+     * @returns Logger module object instance.
+     */
+    static timeEnd(id: string): typeof OZLogger;
     /**
      * Method to tag log messages.
      *
-     * @static
-     * @param   { ...string }  tags  Strings to tag the log message.
-     * @returns { OZLogger }  Logger module object instance.
+     * @param   tags  Strings to tag the log message.
+     * @returns Logger module object instance.
      */
     static tag(...tags: string[]): typeof OZLogger;
     /**
      * Debug logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static debug(...args: unknown[]): Promise<void>;
     /**
      * HTTP request logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static http(...args: unknown[]): Promise<void>;
     /**
      * Information logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static info(...args: unknown[]): Promise<void>;
     /**
      * Warning logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static warn(...args: unknown[]): Promise<void>;
     /**
      * Error logging method.
      *
-     * @static
-     * @param   { ...unknown }  args  Data to be logged.
-     * @returns { void }
+     * @param  args  Data to be logged.
      */
     static error(...args: unknown[]): Promise<void>;
 }

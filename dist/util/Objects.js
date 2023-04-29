@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.filter = exports.mask = void 0;
-const node_crypto_1 = require("node:crypto");
+const crypto_1 = require("crypto");
 /**
  * Utility function for obfuscating values in objects.
  *
@@ -31,7 +31,7 @@ function mask(original, fields, char = '*') {
             if (lookup[key]) {
                 // Values are first hashed to
                 // obfuscate string length
-                obj[key] = (0, node_crypto_1.createHash)('sha1')
+                obj[key] = (0, crypto_1.createHash)('sha1')
                     .update(JSON.stringify(obj[key]))
                     .digest('hex')
                     .replace(/./g, char);
