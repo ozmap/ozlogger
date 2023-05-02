@@ -20,7 +20,7 @@ class OZLogger {
          */
         this.transports = [];
         let setup;
-        this.level = config.level; // Default
+        this.level = config.level.toLowerCase(); // Default
         if ((0, Helpers_1.includes)(config.targets, 'stdout')) {
             setup = {
                 level: this.level
@@ -73,7 +73,7 @@ class OZLogger {
         }
         this.logger = (0, winston_1.createLogger)({
             transports: this.transports,
-            defaultMeta: { service: config.app }
+            defaultMeta: { host: (0, Helpers_1.host)() }
         });
     }
     /**
@@ -103,8 +103,8 @@ class OZLogger {
         }
         this.logger.log({
             level,
-            message,
-            meta: { tags }
+            tags,
+            message
         });
     }
     /**

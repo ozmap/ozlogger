@@ -13,14 +13,10 @@ function Text(label, colors = false) {
         }),
         winston_1.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston_1.format.errors({ stack: true }),
-        winston_1.format.printf(({ timestamp, level, label, message, meta }) => {
-            let { tags } = meta;
+        winston_1.format.printf(({ timestamp, level, label, tags, message }) => {
             if (tags && tags.length)
-                tags = tags.join(' ');
-            // Custom logging format string
-            return tags
-                ? `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags}] ${message}`
-                : `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
+                return `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags.join(' ')}] ${message}`;
+            return `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
         })
     ];
     if (colors)

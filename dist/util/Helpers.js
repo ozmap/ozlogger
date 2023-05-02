@@ -1,13 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stringify = exports.color = exports.includes = exports.env = void 0;
+exports.stringify = exports.color = exports.includes = exports.host = exports.env = void 0;
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+const os_1 = require("os");
 /**
  * Read and environment variable at runtime.
  *
- * @param  name  Environment variable name.
- * @return The value stored in the environment variable.
+ * @param   name  Environment variable name.
+ * @returns The value stored in the environment variable.
  */
 function env(name) {
     return (0, child_process_1.execSync)(`echo $${name}`, {
@@ -16,6 +17,15 @@ function env(name) {
     }).replace(/(\r\n|\n|\r)/gm, '');
 }
 exports.env = env;
+/**
+ * Return a minimal host description.
+ *
+ * @returns The host description.
+ */
+function host() {
+    return `${(0, os_1.hostname)()} (${(0, os_1.type)()} ${(0, os_1.release)()})`;
+}
+exports.host = host;
 /**
  * Check if a string is in an array of strings.
  *

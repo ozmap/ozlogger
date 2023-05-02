@@ -6,7 +6,7 @@ import {
 } from 'winston';
 import 'winston-mongodb';
 import { Text, Json } from './format';
-import { env, includes, color, stringify } from './util/Helpers';
+import { env, host, includes, color, stringify } from './util/Helpers';
 import LoggerConfigOptions from './util/interface/LoggerConfigOptions';
 
 /**
@@ -51,7 +51,7 @@ export class OZLogger {
 	private constructor(config: LoggerConfigOptions) {
 		let setup: { [key: string]: unknown };
 
-		this.level = config.level; // Default
+		this.level = config.level.toLowerCase(); // Default
 
 		if (includes(config.targets, 'stdout')) {
 			setup = {
@@ -116,7 +116,7 @@ export class OZLogger {
 
 		this.logger = createLogger({
 			transports: this.transports,
-			defaultMeta: { service: config.app }
+			defaultMeta: { host: host() }
 		});
 	}
 
@@ -152,8 +152,8 @@ export class OZLogger {
 
 		this.logger.log({
 			level,
-			message,
-			meta: { tags }
+			tags,
+			message
 		});
 	}
 

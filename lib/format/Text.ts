@@ -11,15 +11,13 @@ export function Text(label: string, colors = false): Logform.Format {
 		}),
 		format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
 		format.errors({ stack: true }),
-		format.printf(({ timestamp, level, label, message, meta }) => {
-			let { tags } = meta;
+		format.printf(({ timestamp, level, label, tags, message }) => {
+			if (tags && tags.length)
+				return `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags.join(
+					' '
+				)}] ${message}`;
 
-			if (tags && tags.length) tags = tags.join(' ');
-
-			// Custom logging format string
-			return tags
-				? `(${timestamp}) ${level.toUpperCase()}: ${label} [${tags}] ${message}`
-				: `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
+			return `(${timestamp}) ${level.toUpperCase()}: ${label} ${message}`;
 		})
 	];
 

@@ -5,10 +5,10 @@ import LoggerConfigOptions from '../lib/util/interface/LoggerConfigOptions';
 // Configuration payload for the OZLogger
 const config: LoggerConfigOptions = {
 	app: 'OZLogger',
-	level: 'DEBUG',
+	level: 'debug',
 	targets: ['stdout', 'file'],
 	stdout: {
-		output: 'text'
+		output: 'json'
 	},
 	file: {
 		filename: 'logs/test.log',
