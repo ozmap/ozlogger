@@ -41,7 +41,7 @@ export function includes(arr: string[], value: string): boolean {
  * @returns Wheter or not the output can be colorized.
  */
 export function color(): boolean {
-	return !!process.env.OZLOGGER_COLORS?.match(/(true)|(yes)/i);
+	return !!process.env.OZLOGGER_COLORS?.match(/true/i);
 }
 
 /**
