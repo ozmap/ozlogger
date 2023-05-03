@@ -20,8 +20,8 @@ import { OZLogger } from '@ozmap/logger';
 
 // Initialize and configure the logging facility
 OZLogger.init({
-	app: 'test',
-	level: 'debug',
+    app: 'test',
+    level: 'debug',
     targets: ['stdout']
 });
 
@@ -48,26 +48,26 @@ process.env.NODE_ENV = 'prod';
 // Initialize and configure the logging
 // facility with the Mongo transport
 OZLogger.init({
-	app: 'test',
-	level: 'debug',
+    app: 'test',
+    level: 'debug',
     targets: ['mongo'],
-	mongo: {
-		server: {
-			host: 'localhost',
-			port: 27017,
-			database: 'application',
-			collection: 'ozlogs',
-			level: 'info'
-		},
-		auth: {
-			user: 'username',
-			pass: 'password'
-		},
-		options: {
-			useUnifiedTopology: true,
-			authSource: 'admin'
-		}
-	}
+    mongo: {
+        server: {
+            host: 'localhost',
+            port: 27017,
+            database: 'application',
+            collection: 'ozlogs',
+            level: 'info'
+        },
+        auth: {
+            user: 'username',
+            pass: 'password'
+        },
+        options: {
+            useUnifiedTopology: true,
+            authSource: 'admin'
+        }
+    }
 });
 
 
