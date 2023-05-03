@@ -18,6 +18,6 @@
 		"types": ["node", "jest"]
 	},
 
-	"include": ["lib/**/*.ts"],
+	"include": ["lib/**/*.ts", "cli/**/*.ts"],
 	"exclude": ["**/*.test.*"]
 }

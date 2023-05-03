@@ -36,9 +36,10 @@ export declare class OZLogger {
      */
     private constructor();
     /**
-     * Method for updating log levels at runtime.
+     * Method for setting up IPC server to
+     * interact with OZLogger at runtime.
      */
-    private updateLogLevelAtRuntime;
+    private IPC;
     /**
      * Abstract logging method for internal use only.
      *

@@ -5,8 +5,11 @@ import {
 	Logger as WinstonLogger
 } from 'winston';
 import 'winston-mongodb';
+import ipc from 'node-ipc';
+import { Ipc } from '../cli/util/enum/Ipc';
+import { Message, Socket } from '../cli/util/interface/Message';
 import { Text, Json } from './format';
-import { env, host, includes, color, stringify } from './util/Helpers';
+import { host, includes, color, stringify } from './util/Helpers';
 import LoggerConfigOptions from './util/interface/LoggerConfigOptions';
 
 /**
@@ -121,17 +124,47 @@ export class OZLogger {
 	}
 
 	/**
-	 * Method for updating log levels at runtime.
+	 * Method for setting up IPC server to
+	 * interact with OZLogger at runtime.
 	 */
-	private updateLogLevelAtRuntime(): void {
-		setInterval((): void => {
-			const level = env('OZLOGGER_LEVEL') || this.level;
+	private IPC(): void {
+		Object.assign(ipc.config, {
+			id: Ipc.SERVER,
+			retry: 1500,
+			silent: true
+		});
 
-			for (let i = 0; i < this.transports.length; ++i) {
-				if (this.transports[i].level !== level)
-					this.transports[i].level = level;
-			}
-		}, 2500); // milliseconds
+		ipc.serve(() => {
+			ipc.server.on(
+				'message',
+				(message: string, socket: Socket): void => {
+					const { signal, data } = JSON.parse(message) as Message;
+
+					switch (signal) {
+						case 'UpdateLogLevel':
+							for (let i = 0; i < this.transports.length; ++i) {
+								if (this.transports[i].level !== data?.level)
+									this.transports[i].level =
+										data?.level as string;
+							}
+
+							break;
+
+						case 'ResetLogLevel':
+							for (let i = 0; i < this.transports.length; ++i) {
+								if (this.transports[i].level !== this.level)
+									this.transports[i].level = this.level;
+							}
+
+							break;
+					}
+
+					ipc.server.emit(socket, 'disconnect');
+				}
+			);
+		});
+
+		ipc.server.start();
 	}
 
 	/**
@@ -167,7 +200,7 @@ export class OZLogger {
 		if (!this.instance && arg) {
 			this.instance = new this(arg);
 
-			if (arg.dynamic) this.instance.updateLogLevelAtRuntime();
+			if (arg.dynamic) this.instance.IPC();
 		}
 
 		return this.instance;

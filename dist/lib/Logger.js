@@ -1,8 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OZLogger = void 0;
 const winston_1 = require("winston");
 require("winston-mongodb");
+const node_ipc_1 = __importDefault(require("node-ipc"));
+const Ipc_1 = require("../cli/util/enum/Ipc");
 const format_1 = require("./format");
 const Helpers_1 = require("./util/Helpers");
 /**
@@ -77,16 +82,37 @@ class OZLogger {
         });
     }
     /**
-     * Method for updating log levels at runtime.
+     * Method for setting up IPC server to
+     * interact with OZLogger at runtime.
      */
-    updateLogLevelAtRuntime() {
-        setInterval(() => {
-            const level = (0, Helpers_1.env)('OZLOGGER_LEVEL') || this.level;
-            for (let i = 0; i < this.transports.length; ++i) {
-                if (this.transports[i].level !== level)
-                    this.transports[i].level = level;
-            }
-        }, 2500); // milliseconds
+    IPC() {
+        Object.assign(node_ipc_1.default.config, {
+            id: Ipc_1.Ipc.SERVER,
+            retry: 1500,
+            silent: true
+        });
+        node_ipc_1.default.serve(() => {
+            node_ipc_1.default.server.on('message', (message, socket) => {
+                const { signal, data } = JSON.parse(message);
+                switch (signal) {
+                    case 'UpdateLogLevel':
+                        for (let i = 0; i < this.transports.length; ++i) {
+                            if (this.transports[i].level !== (data === null || data === void 0 ? void 0 : data.level))
+                                this.transports[i].level =
+                                    data === null || data === void 0 ? void 0 : data.level;
+                        }
+                        break;
+                    case 'ResetLogLevel':
+                        for (let i = 0; i < this.transports.length; ++i) {
+                            if (this.transports[i].level !== this.level)
+                                this.transports[i].level = this.level;
+                        }
+                        break;
+                }
+                node_ipc_1.default.server.emit(socket, 'disconnect');
+            });
+        });
+        node_ipc_1.default.server.start();
     }
     /**
      * Abstract logging method for internal use only.
@@ -117,7 +143,7 @@ class OZLogger {
         if (!this.instance && arg) {
             this.instance = new this(arg);
             if (arg.dynamic)
-                this.instance.updateLogLevelAtRuntime();
+                this.instance.IPC();
         }
         return this.instance;
     }

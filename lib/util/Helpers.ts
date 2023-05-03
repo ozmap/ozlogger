@@ -1,19 +1,5 @@
-import { execSync } from 'child_process';
 import { format } from 'util';
 import { hostname, type, release } from 'os';
-
-/**
- * Read and environment variable at runtime.
- *
- * @param   name  Environment variable name.
- * @returns The value stored in the environment variable.
- */
-export function env(name: string): string {
-	return execSync(`echo $${name}`, {
-		encoding: 'utf-8',
-		timeout: 100 // milliseconds
-	}).replace(/(\r\n|\n|\r)/gm, '');
-}
 
 /**
  * Return a minimal host description.

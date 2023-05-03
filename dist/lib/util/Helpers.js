@@ -1,22 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stringify = exports.color = exports.includes = exports.host = exports.env = void 0;
-const child_process_1 = require("child_process");
+exports.stringify = exports.color = exports.includes = exports.host = void 0;
 const util_1 = require("util");
 const os_1 = require("os");
-/**
- * Read and environment variable at runtime.
- *
- * @param   name  Environment variable name.
- * @returns The value stored in the environment variable.
- */
-function env(name) {
-    return (0, child_process_1.execSync)(`echo $${name}`, {
-        encoding: 'utf-8',
-        timeout: 100 // milliseconds
-    }).replace(/(\r\n|\n|\r)/gm, '');
-}
-exports.env = env;
 /**
  * Return a minimal host description.
  *
@@ -44,7 +30,7 @@ exports.includes = includes;
  */
 function color() {
     var _a;
-    return !!((_a = process.env.OZLOGGER_COLORS) === null || _a === void 0 ? void 0 : _a.match(/(true)|(yes)/i));
+    return !!((_a = process.env.OZLOGGER_COLORS) === null || _a === void 0 ? void 0 : _a.match(/true/i));
 }
 exports.color = color;
 /**

@@ -1,11 +1,4 @@
 /**
- * Read and environment variable at runtime.
- *
- * @param   name  Environment variable name.
- * @returns The value stored in the environment variable.
- */
-export declare function env(name: string): string;
-/**
  * Return a minimal host description.
  *
  * @returns The host description.

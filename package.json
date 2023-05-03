@@ -1,20 +1,25 @@
 {
 	"name": "@ozmap/logger",
-	"version": "0.1.2-RC-2",
+	"version": "0.1.2-RC-3",
 	"description": "DevOZ logger module.",
-	"main": "dist/index.js",
+	"main": "dist/lib/index.js",
 	"scripts": {
 		"build": "tsc",
-		"docs": "jsdoc -c .jsdocrc dist/",
+		"build:watch": "tsc -w",
+		"docs": "jsdoc -c .jsdocrc dist/lib",
 		"test": "jest --detectOpenHandles",
+		"test:watch": "jest --watchAll --detectOpenHandles",
 		"lint": "eslint --ext .js,.ts",
 		"format": "prettier --write",
 		"prepare": "husky install"
 	},
-	"types": "dist/index.d.ts",
+	"types": "dist/lib/index.d.ts",
 	"files": [
 		"/dist"
 	],
+	"bin": {
+		"ozlogger": "dist/cli/index.js"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/ozmap/ozlogger.git"
@@ -22,7 +27,8 @@
 	"keywords": [
 		"NodeJS",
 		"Winston",
-		"Logger"
+		"Logger",
+		"CLI"
 	],
 	"author": "Leandro Schabarum <leandro.schabarum@ozmap.com.br>",
 	"license": "MIT",
@@ -31,6 +37,8 @@
 	},
 	"homepage": "https://github.com/ozmap/ozlogger#readme",
 	"dependencies": {
+		"commander": "^10.0.1",
+		"node-ipc": "^10.1.0",
 		"winston": "^3.8.2",
 		"winston-mongodb": "^5.1.1"
 	},
@@ -38,6 +46,7 @@
 		"@tsconfig/node16": "^1.0.3",
 		"@types/jest": "^29.2.2",
 		"@types/node": "^18.7.14",
+		"@types/node-ipc": "^9.2.0",
 		"@typescript-eslint/eslint-plugin": "^5.37.0",
 		"@typescript-eslint/parser": "^5.37.0",
 		"eslint": "^8.23.1",
