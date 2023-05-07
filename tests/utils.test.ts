@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { mask, filter } from '../';
+import { mask, filter } from '../lib';
 
 const obj = {
 	firstname: 'Test',

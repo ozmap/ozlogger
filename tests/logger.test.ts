@@ -1,12 +1,19 @@
 import { expect, test } from '@jest/globals';
 import { OZLogger } from '../lib';
-import LoggerConfigOptions from '../lib/interfaces/LoggerConfigOptions';
+import LoggerConfigOptions from '../lib/util/interface/LoggerConfigOptions';
 
 // Configuration payload for the OZLogger
 const config: LoggerConfigOptions = {
 	app: 'OZLogger',
-	filename: 'logs/test.log',
-	level: 'DEBUG'
+	level: 'debug',
+	targets: ['stdout', 'file'],
+	stdout: {
+		output: 'json'
+	},
+	file: {
+		filename: 'logs/test.log',
+		output: 'text'
+	}
 };
 
 describe('OZLogger Class test suite.', () => {
@@ -40,5 +47,22 @@ describe('OZLogger Class test suite.', () => {
 	test('OZLogger must have error method.', () => {
 		expect(typeof OZLogger['error'] === 'function').toBe(true);
 		expect(() => OZLogger.error('error message log')).not.toThrow(Error);
+	});
+
+	test('OZLogger must have tag method and it must be chainable.', () => {
+		expect(typeof OZLogger['tag'] === 'function').toBe(true);
+		expect(() =>
+			OZLogger.tag('TAGS').debug('chainable tag method')
+		).not.toThrow(Error);
+	});
+
+	test('Logger must have time method.', () => {
+		expect(typeof OZLogger['time'] === 'function').toBe(true);
+		expect(() => OZLogger.time('timer')).not.toThrow(Error);
+	});
+
+	test('Logger must have timeEnd method.', () => {
+		expect(typeof OZLogger['timeEnd'] === 'function').toBe(true);
+		expect(() => OZLogger.timeEnd('timer')).not.toThrow(Error);
 	});
 });
