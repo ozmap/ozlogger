@@ -12,7 +12,10 @@ async function updateLogLevel(level, opts) {
     if (!(0, Helpers_1.includes)(['debug', 'http', 'info', 'warn', 'error'], level))
         throw new commander_1.InvalidArgumentError(`Unknown log level '${level}'.`);
     if (opts.timeout) {
-        (0, Ipc_1.emit)({ signal: 'UpdateLogLevel', data: { level, timeout: opts.timeout * 1000 } });
+        (0, Ipc_1.emit)({
+            signal: 'UpdateLogLevel',
+            data: { level, timeout: opts.timeout * 1000 }
+        });
     }
     else {
         (0, Ipc_1.emit)({ signal: 'UpdateLogLevel', data: { level } });
