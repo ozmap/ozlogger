@@ -6,6 +6,10 @@ program
 	.command('set-level')
 	.description('Command to change the current log level.')
 	.argument('<level>', 'The log level to be used.')
+	.option(
+		'-t, --timeout <seconds>',
+		'Timeout in seconds until the log level is reset.'
+	)
 	.action(updateLogLevel);
 
 program

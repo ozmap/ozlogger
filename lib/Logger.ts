@@ -47,6 +47,11 @@ export class OZLogger {
 	protected level: string;
 
 	/**
+	 * Stores the timer for set-level command timeout option.
+	 */
+	private timer: NodeJS.Timeout | void;
+
+	/**
 	 * Logger module class constructor.
 	 *
 	 * @param  config  Logger module configuration options.
@@ -134,6 +139,13 @@ export class OZLogger {
 			silent: true
 		});
 
+		const reset = () => {
+			for (let i = 0; i < this.transports.length; ++i) {
+				if (this.transports[i].level !== this.level)
+					this.transports[i].level = this.level;
+			}
+		};
+
 		ipc.serve(() => {
 			ipc.server.on(
 				'message',
@@ -148,13 +160,24 @@ export class OZLogger {
 										data?.level as string;
 							}
 
+							if (data?.timeout) {
+								if (this.timer) clearTimeout(this.timer);
+
+								this.timer = setTimeout(
+									reset,
+									data?.timeout as number
+								);
+							}
+
 							break;
 
 						case 'ResetLogLevel':
-							for (let i = 0; i < this.transports.length; ++i) {
-								if (this.transports[i].level !== this.level)
-									this.transports[i].level = this.level;
+							if (this.timer) {
+								clearTimeout(this.timer);
+								this.timer = undefined;
 							}
+
+							reset();
 
 							break;
 					}

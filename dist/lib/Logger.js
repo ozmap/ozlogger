@@ -91,6 +91,12 @@ class OZLogger {
             retry: 1500,
             silent: true
         });
+        const reset = () => {
+            for (let i = 0; i < this.transports.length; ++i) {
+                if (this.transports[i].level !== this.level)
+                    this.transports[i].level = this.level;
+            }
+        };
         node_ipc_1.default.serve(() => {
             node_ipc_1.default.server.on('message', (message, socket) => {
                 const { signal, data } = JSON.parse(message);
@@ -101,12 +107,18 @@ class OZLogger {
                                 this.transports[i].level =
                                     data === null || data === void 0 ? void 0 : data.level;
                         }
+                        if (data === null || data === void 0 ? void 0 : data.timeout) {
+                            if (this.timer)
+                                clearTimeout(this.timer);
+                            this.timer = setTimeout(reset, data === null || data === void 0 ? void 0 : data.timeout);
+                        }
                         break;
                     case 'ResetLogLevel':
-                        for (let i = 0; i < this.transports.length; ++i) {
-                            if (this.transports[i].level !== this.level)
-                                this.transports[i].level = this.level;
+                        if (this.timer) {
+                            clearTimeout(this.timer);
+                            this.timer = undefined;
                         }
+                        reset();
                         break;
                 }
                 node_ipc_1.default.server.emit(socket, 'disconnect');

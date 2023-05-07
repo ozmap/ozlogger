@@ -7,11 +7,16 @@ const Helpers_1 = require("../../lib/util/Helpers");
 /**
  * Action method for sending signal to update log levels at runtime
  */
-async function updateLogLevel(level) {
+async function updateLogLevel(level, opts) {
     // Validation guard for unknown log level
     if (!(0, Helpers_1.includes)(['debug', 'http', 'info', 'warn', 'error'], level))
         throw new commander_1.InvalidArgumentError(`Unknown log level '${level}'.`);
-    (0, Ipc_1.emit)({ signal: 'UpdateLogLevel', data: { level } });
+    if (opts.timeout) {
+        (0, Ipc_1.emit)({ signal: 'UpdateLogLevel', data: { level, timeout: opts.timeout * 1000 } });
+    }
+    else {
+        (0, Ipc_1.emit)({ signal: 'UpdateLogLevel', data: { level } });
+    }
 }
 exports.updateLogLevel = updateLogLevel;
 /**

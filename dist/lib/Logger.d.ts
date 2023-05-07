@@ -30,6 +30,10 @@ export declare class OZLogger {
      */
     protected level: string;
     /**
+     * Stores the timer for set-level command timeout option.
+     */
+    private timer;
+    /**
      * Logger module class constructor.
      *
      * @param  config  Logger module configuration options.

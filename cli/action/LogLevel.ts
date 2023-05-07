@@ -5,12 +5,22 @@ import { includes } from '../../lib/util/Helpers';
 /**
  * Action method for sending signal to update log levels at runtime
  */
-export async function updateLogLevel(level: string): Promise<void> {
+export async function updateLogLevel(
+	level: string,
+	opts: { timeout: number }
+): Promise<void> {
 	// Validation guard for unknown log level
 	if (!includes(['debug', 'http', 'info', 'warn', 'error'], level))
 		throw new InvalidArgumentError(`Unknown log level '${level}'.`);
 
-	emit({ signal: 'UpdateLogLevel', data: { level } });
+	if (opts.timeout) {
+		emit({
+			signal: 'UpdateLogLevel',
+			data: { level, timeout: opts.timeout * 1000 }
+		});
+	} else {
+		emit({ signal: 'UpdateLogLevel', data: { level } });
+	}
 }
 
 /**
