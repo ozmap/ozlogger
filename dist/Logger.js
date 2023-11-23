@@ -9,25 +9,29 @@ class Logger {
     /**
      * Logger module class constructor.
      *
-     * @param   tag  Tag with which the logger is being created.
+     * @param   opts         Logger module configuration options.
+     * @param   opts.tag     Tag with which the logger is being created.
+     * @param   opts.client  Underlying abstract logger to override console.
      */
-    constructor(tag) {
+    constructor(opts = {}) {
+        var _a;
         /**
          * Temporary storage for timers.
          */
         this.timers = new Map();
-        this.logger = (0, format_1.getLogWrapper)('json', console, tag);
+        this.logger = (0, format_1.getLogWrapper)('json', (_a = opts.client) !== null && _a !== void 0 ? _a : console, opts.tag);
     }
     /**
      * Logger module initializer method.
      *
      * @deprecated Use the createLogger() factory function instead.
-     * @param   opts      Logger module configuration options.
-     * @param   opts.tag  Tag with which the logger is being created.
+     * @param   opts         Logger module configuration options.
+     * @param   opts.tag     Tag with which the logger is being created.
+     * @param   opts.client  Underlying abstract logger to override console.
      * @returns Logger instance.
      */
-    static init(opts) {
-        return new this(opts.tag);
+    static init(opts = {}) {
+        return new this(opts);
     }
     /**
      * Method for tracking execution time.
@@ -142,10 +146,11 @@ exports.Logger = Logger;
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag  Tag with which the logger is being created.
+ * @param   tag     Tag with which the logger is being created.
+ * @param   client  Underlying abstract logger to override console.
  * @returns Logger instace
  */
-function createLogger(tag) {
-    return new Logger(tag);
+function createLogger(tag, client) {
+    return new Logger({ tag, client });
 }
 exports.createLogger = createLogger;

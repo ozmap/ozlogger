@@ -1,5 +1,6 @@
 import { LoggerMethods } from './util/interface/LoggerMethods';
 import { LogWrapper } from './util/type/LogWrapper';
+import { AbstractLogger } from './util/type/AbstractLogger';
 /**
  * Logger module class.
  */
@@ -15,19 +16,26 @@ export declare class Logger implements LoggerMethods {
     /**
      * Logger module class constructor.
      *
-     * @param   tag  Tag with which the logger is being created.
+     * @param   opts         Logger module configuration options.
+     * @param   opts.tag     Tag with which the logger is being created.
+     * @param   opts.client  Underlying abstract logger to override console.
      */
-    constructor(tag?: string);
+    constructor(opts?: {
+        tag?: string;
+        client?: AbstractLogger;
+    });
     /**
      * Logger module initializer method.
      *
      * @deprecated Use the createLogger() factory function instead.
-     * @param   opts      Logger module configuration options.
-     * @param   opts.tag  Tag with which the logger is being created.
+     * @param   opts         Logger module configuration options.
+     * @param   opts.tag     Tag with which the logger is being created.
+     * @param   opts.client  Underlying abstract logger to override console.
      * @returns Logger instance.
      */
-    static init(opts: {
+    static init(opts?: {
         tag?: string;
+        client?: AbstractLogger;
     }): Logger;
     /**
      * Method for tracking execution time.
@@ -108,7 +116,8 @@ export declare class Logger implements LoggerMethods {
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag  Tag with which the logger is being created.
+ * @param   tag     Tag with which the logger is being created.
+ * @param   client  Underlying abstract logger to override console.
  * @returns Logger instace
  */
-export declare function createLogger(tag?: string): Logger;
+export declare function createLogger(tag?: string, client?: AbstractLogger): Logger;

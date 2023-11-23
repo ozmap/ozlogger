@@ -1,10 +1,12 @@
 import { expect, test } from '@jest/globals';
 import createLogger, { OZLogger } from '../lib';
 
-const logger: OZLogger = createLogger('perf');
+const logger: OZLogger = createLogger('perf', {
+    log: (msg: string) => undefined
+});
 
 describe('OZLogger performance test suite.', () => {
-    test('Must log 1500+ messages in 1s', () => {
+    test('Must process 200K+ string only messages in 1s', () => {
         let counter = 0;
         const start = Date.now();
 
@@ -13,6 +15,7 @@ describe('OZLogger performance test suite.', () => {
             ++counter;
         }
 
-        expect(counter).toBeGreaterThan(1500);
+        console.info(`${counter} msg/s`); // DEBUG
+        expect(counter).toBeGreaterThan(200000);
     });
 });

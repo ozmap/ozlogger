@@ -1,6 +1,7 @@
 import { getLogWrapper } from './format';
 import { LoggerMethods } from './util/interface/LoggerMethods';
 import { LogWrapper } from './util/type/LogWrapper';
+import { AbstractLogger } from './util/type/AbstractLogger';
 
 /**
  * Logger module class.
@@ -19,22 +20,27 @@ export class Logger implements LoggerMethods {
     /**
      * Logger module class constructor.
      *
-     * @param   tag  Tag with which the logger is being created.
+     * @param   opts         Logger module configuration options.
+     * @param   opts.tag     Tag with which the logger is being created.
+     * @param   opts.client  Underlying abstract logger to override console.
      */
-    public constructor(tag?: string) {
-        this.logger = getLogWrapper('json', console, tag);
+    public constructor(opts: { tag?: string; client?: AbstractLogger } = {}) {
+        this.logger = getLogWrapper('json', opts.client ?? console, opts.tag);
     }
 
     /**
      * Logger module initializer method.
      *
      * @deprecated Use the createLogger() factory function instead.
-     * @param   opts      Logger module configuration options.
-     * @param   opts.tag  Tag with which the logger is being created.
+     * @param   opts         Logger module configuration options.
+     * @param   opts.tag     Tag with which the logger is being created.
+     * @param   opts.client  Underlying abstract logger to override console.
      * @returns Logger instance.
      */
-    public static init(opts: { tag?: string }): Logger {
-        return new this(opts.tag);
+    public static init(
+        opts: { tag?: string; client?: AbstractLogger } = {}
+    ): Logger {
+        return new this(opts);
     }
 
     /**
@@ -163,9 +169,10 @@ export class Logger implements LoggerMethods {
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag  Tag with which the logger is being created.
+ * @param   tag     Tag with which the logger is being created.
+ * @param   client  Underlying abstract logger to override console.
  * @returns Logger instace
  */
-export function createLogger(tag?: string) {
-    return new Logger(tag);
+export function createLogger(tag?: string, client?: AbstractLogger) {
+    return new Logger({ tag, client });
 }
