@@ -3,7 +3,7 @@ import createLogger, { OZLogger } from '../lib';
 
 const logger: OZLogger = createLogger();
 
-describe('OZLogger Class test suite.', () => {
+describe('OZLogger factory test suite.', () => {
     test('logger must have debug method.', () => {
         expect(typeof logger['debug'] === 'function').toBe(true);
         expect(() => logger.debug('debug message log')).not.toThrow(Error);
