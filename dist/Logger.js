@@ -1,30 +1,23 @@
-import { getLogWrapper } from './format';
-import { LoggerMethods } from './util/interface/LoggerMethods';
-import { LogWrapper } from './util/type/LogWrapper';
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createLogger = exports.Logger = void 0;
+const format_1 = require("./format");
 /**
  * Logger module class.
  */
-export class Logger implements LoggerMethods {
-    /**
-     * Stores the logger wrapper being used.
-     */
-    protected logger: LogWrapper;
-
-    /**
-     * Temporary storage for timers.
-     */
-    private timers = new Map<string, number>();
-
+class Logger {
     /**
      * Logger module class constructor.
      *
      * @param   tag  Tag with which the logger is being created.
      */
-    public constructor(tag?: string) {
-        this.logger = getLogWrapper('json', console, tag);
+    constructor(tag) {
+        /**
+         * Temporary storage for timers.
+         */
+        this.timers = new Map();
+        this.logger = (0, format_1.getLogWrapper)('json', console, tag);
     }
-
     /**
      * Logger module initializer method.
      *
@@ -33,43 +26,37 @@ export class Logger implements LoggerMethods {
      * @param   opts.tag  Tag with which the logger is being created.
      * @returns Logger instance.
      */
-    public static init(opts: { tag?: string }): Logger {
+    static init(opts) {
         return new this(opts.tag);
     }
-
     /**
      * Method for tracking execution time.
      *
      * @param   id  Timer identifier tag.
      * @returns Logger instance.
      */
-    public time(id: string): Logger {
+    time(id) {
         // Validation guard for already used identifier
-        if (this.timers.has(id)) throw new Error(`Identifier ${id} is in use`);
-
+        if (this.timers.has(id))
+            throw new Error(`Identifier ${id} is in use`);
         this.timers.set(id, Date.now());
-
         return this;
     }
-
     /**
      * Method for retrieving tracked execution time.
      *
      * @param   id  Timer identifier tag.
      * @returns Logger instance.
      */
-    public timeEnd(id: string): Logger {
+    timeEnd(id) {
         // Validation guard for unknown ID
-        if (!this.timers.has(id)) throw new Error(`Undefined identifier ${id}`);
-
-        const time: number = Date.now() - (this.timers.get(id) as number);
+        if (!this.timers.has(id))
+            throw new Error(`Undefined identifier ${id}`);
+        const time = Date.now() - this.timers.get(id);
         this.timers.delete(id); // Cleanup
-
         this.logger('info', `${id}: ${time} ms`);
-
         return this;
     }
-
     /**
      * Method to tag log messages.
      *
@@ -80,92 +67,85 @@ export class Logger implements LoggerMethods {
      * @returns Logger instance.
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public tag(...tags: string[]): Logger {
+    tag(...tags) {
         return this;
     }
-
     /**
      * Silly logging method. Same as '.debug()'.
      *
      * @deprecated Use .debug() logging method istead.
      * @param   args  Data to be logged.
      */
-    public silly(...args: unknown[]): void {
+    silly(...args) {
         this.logger('SILLY', ...args);
     }
-
     /**
      * Debugging logging method.
      *
      * @param   args  Data to be logged.
      */
-    public debug(...args: unknown[]): void {
+    debug(...args) {
         this.logger('DEBUG', ...args);
     }
-
     /**
      * Audit logging method.
      *
      * @param   args  Data to be logged.
      */
-    public audit(...args: unknown[]): void {
+    audit(...args) {
         this.logger('AUDIT', ...args);
     }
-
     /**
      * HTTP request logging method. Same as '.info()'.
      *
      * @deprecated Use .info() logging method istead.
      * @param   args  Data to be logged.
      */
-    public http(...args: unknown[]): void {
+    http(...args) {
         this.logger('HTTP', ...args);
     }
-
     /**
      * Information logging method.
      *
      * @param   args  Data to be logged.
      */
-    public info(...args: unknown[]): void {
+    info(...args) {
         this.logger('INFO', ...args);
     }
-
     /**
      * Warning logging method.
      *
      * @param   args  Data to be logged.
      */
-    public warn(...args: unknown[]): void {
+    warn(...args) {
         this.logger('WARNING', ...args);
     }
-
     /**
      * Error logging method.
      *
      * @param   args  Data to be logged.
      */
-    public error(...args: unknown[]): void {
+    error(...args) {
         this.logger('ERROR', ...args);
     }
-
     /**
      * Critical logging method. Same as '.error()'.
      *
      * @deprecated Use .error() logging method istead.
      * @param   args  Data to be logged.
      */
-    public critical(...args: unknown[]): void {
+    critical(...args) {
         this.logger('CRITICAL', ...args);
     }
 }
-
+exports.Logger = Logger;
 /**
  * Factory function to create tagged Logger instance.
  *
  * @param   tag  Tag with which the logger is being created.
  * @returns Logger instace
  */
-export function createLogger(tag?: string) {
+function createLogger(tag) {
     return new Logger(tag);
 }
+exports.createLogger = createLogger;

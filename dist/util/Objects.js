@@ -1,5 +1,7 @@
-import { createHash } from 'crypto';
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.filter = exports.mask = void 0;
+const crypto_1 = require("crypto");
 /**
  * Utility function for obfuscating values in objects.
  *
@@ -8,51 +10,40 @@ import { createHash } from 'crypto';
  * @param   char      The character used when masking values.
  * @returns The obfuscated object.
  */
-export function mask<T = Record<string, unknown>>(
-    original: T,
-    fields: string | string[],
-    char = '*'
-): T {
-    if (typeof fields === 'string') fields = fields.trim().split(/\s+/);
-
+function mask(original, fields, char = '*') {
+    if (typeof fields === 'string')
+        fields = fields.trim().split(/\s+/);
     // Lookup table used to reduce the time complexity for
     // check calls to see which keys are marked for masking
-    const lookup: Record<string, boolean> = fields.reduce((acc, val) => {
+    const lookup = fields.reduce((acc, val) => {
         return { ...acc, [val]: true };
     }, {});
-
-    const walk = (data: Record<string, unknown> | unknown): unknown => {
+    const walk = (data) => {
         // If the passed in element is not an object
         // we've reached the end of the recursive call
-        if (!data || typeof data !== 'object') return data;
-
-        const partition: Record<string, unknown> = {};
-
-        const { ...obj } = data as Record<string, unknown>;
-
+        if (!data || typeof data !== 'object')
+            return data;
+        const partition = {};
+        const { ...obj } = data;
         for (const key in obj) {
             // Use the lookup table to check if
             // the key is marked for masking.
             if (lookup[key]) {
                 // Values are first hashed to
                 // obfuscate string length
-                obj[key] = createHash('sha1')
+                obj[key] = (0, crypto_1.createHash)('sha1')
                     .update(JSON.stringify(obj[key]))
                     .digest('hex')
                     .replace(/./g, char);
             }
-
             partition[key] = walk(obj[key]);
         }
-
         return partition;
     };
-
     const { ...copy } = original;
-
-    return walk(copy) as T;
+    return walk(copy);
 }
-
+exports.mask = mask;
 /**
  * Utility function for removing keys from object.
  *
@@ -60,37 +51,30 @@ export function mask<T = Record<string, unknown>>(
  * @param   fields    Key names to be removed.
  * @returns The filtered object.
  */
-export function filter<T = Record<string, unknown>>(
-    original: object,
-    fields: string | string[]
-): T {
-    if (typeof fields === 'string') fields = fields.trim().split(/\s+/);
-
+function filter(original, fields) {
+    if (typeof fields === 'string')
+        fields = fields.trim().split(/\s+/);
     // Lookup table used to reduce the time complexity for
     // check calls to see which keys are marked for removal
-    const lookup: Record<string, boolean> = fields.reduce((acc, val) => {
+    const lookup = fields.reduce((acc, val) => {
         return { ...acc, [val]: true };
     }, {});
-
-    const walk = (data: Record<string, unknown> | unknown): unknown => {
+    const walk = (data) => {
         // If the passed in element is not an object
         // we've reached the end of the recursive call
-        if (!data || typeof data !== 'object') return data;
-
-        const partition: Record<string, unknown> = {};
-
-        const { ...obj } = data as Record<string, unknown>;
-
+        if (!data || typeof data !== 'object')
+            return data;
+        const partition = {};
+        const { ...obj } = data;
         for (const key in obj) {
             // Use the lookup table to check if
             // the key is marked for removal.
-            if (!lookup[key]) partition[key] = walk(obj[key]);
+            if (!lookup[key])
+                partition[key] = walk(obj[key]);
         }
-
         return partition;
     };
-
     const { ...copy } = original;
-
-    return walk(copy) as T;
+    return walk(copy);
 }
+exports.filter = filter;

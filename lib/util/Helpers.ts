@@ -1,24 +1,24 @@
 import { format } from 'util';
-import { hostname, type, release } from 'os';
+import { LogLevels } from './enum/LogLevels';
 
 /**
- * Return a minimal host description.
+ * Return the current date and time.
  *
- * @returns The host description.
+ * @returns The current datetime.
  */
-export function host(): string {
-	return `${hostname()} (${type()} ${release()})`;
+export function now(): string {
+    return new Date().toISOString();
 }
 
 /**
- * Check if a string is in an array of strings.
+ * Retrieve the current log level priority number.
  *
- * @param   arr    The string array to check.
- * @param   value  Value to check the existance.
- * @returns Wheter or not the string is in the provided array.
+ * @returns The level priority number.
  */
-export function includes(arr: string[], value: string): boolean {
-	return arr.indexOf(value) > -1;
+export function level(): number {
+    const input: string = process.env.OZLOGGER_LEVEL?.toLowerCase() || 'info';
+
+    return LogLevels[input as keyof typeof LogLevels] || LogLevels['info'];
 }
 
 /**
@@ -27,7 +27,7 @@ export function includes(arr: string[], value: string): boolean {
  * @returns Wheter or not the output can be colorized.
  */
 export function color(): boolean {
-	return !!process.env.OZLOGGER_COLORS?.match(/true/i);
+    return !!process.env.OZLOGGER_COLORS?.match(/true/i);
 }
 
 /**
@@ -37,5 +37,5 @@ export function color(): boolean {
  * @returns The stringified data.
  */
 export function stringify(data: unknown): string {
-	return typeof data !== 'string' ? format('%O', data) : data;
+    return typeof data !== 'string' ? format('%O', data) : data;
 }
