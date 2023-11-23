@@ -1,17 +1,24 @@
 import { expect, test } from '@jest/globals';
-import createLogger, { OZLogger } from '../lib';
+import { OZLogger } from '../lib';
 
-const logger: OZLogger = createLogger();
+let logger: OZLogger;
+const config = {};
 
 describe('OZLogger Class test suite.', () => {
+    test('OZLogger must have init method.', () => {
+        expect(typeof OZLogger['init'] === 'function').toBe(true);
+        logger = OZLogger.init(config);
+        expect(logger instanceof OZLogger).toBe(true);
+    });
+
     test('logger must have debug method.', () => {
         expect(typeof logger['debug'] === 'function').toBe(true);
         expect(() => logger.debug('debug message log')).not.toThrow(Error);
     });
 
-    test('logger must have audit method.', () => {
-        expect(typeof logger['audit'] === 'function').toBe(true);
-        expect(() => logger.audit('audit message log')).not.toThrow(Error);
+    test('logger must have http method.', () => {
+        expect(typeof logger['http'] === 'function').toBe(true);
+        expect(() => logger.http('http message log')).not.toThrow(Error);
     });
 
     test('logger must have info method.', () => {
@@ -27,6 +34,13 @@ describe('OZLogger Class test suite.', () => {
     test('logger must have error method.', () => {
         expect(typeof logger['error'] === 'function').toBe(true);
         expect(() => logger.error('error message log')).not.toThrow(Error);
+    });
+
+    test('logger must have tag method and it must be chainable.', () => {
+        expect(typeof logger['tag'] === 'function').toBe(true);
+        expect(() =>
+            logger.tag('TAGS').debug('chainable tag method')
+        ).not.toThrow(Error);
     });
 
     test('Logger must have time method.', () => {

@@ -16,9 +16,9 @@ export function now(): string {
  * @returns The level priority number.
  */
 export function level(): number {
-    const input: string = process.env.OZLOGGER_LEVEL?.toLowerCase() || 'info';
+    const input: string = process.env.OZLOGGER_LEVEL?.toLowerCase() || 'audit';
 
-    return LogLevels[input as keyof typeof LogLevels] || LogLevels['info'];
+    return LogLevels[input as keyof typeof LogLevels] || LogLevels['audit'];
 }
 
 /**

@@ -19,8 +19,8 @@ exports.now = now;
  */
 function level() {
     var _a;
-    const input = ((_a = process.env.OZLOGGER_LEVEL) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || 'info';
-    return LogLevels_1.LogLevels[input] || LogLevels_1.LogLevels['info'];
+    const input = ((_a = process.env.OZLOGGER_LEVEL) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || 'audit';
+    return LogLevels_1.LogLevels[input] || LogLevels_1.LogLevels['audit'];
 }
 exports.level = level;
 /**
