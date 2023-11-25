@@ -10,12 +10,13 @@ const Helpers_1 = require("../util/Helpers");
  * @returns The logging method.
  */
 function json(logger, tag) {
+    const paint = (0, Helpers_1.colorized)();
     return async (level, ...args) => {
         const data = {};
         for (let i = 0; i < args.length; ++i) {
             data[i] = (0, Helpers_1.stringify)(args[i]);
         }
-        logger.log(JSON.stringify({ datetime: (0, Helpers_1.now)(), level, tag, data }));
+        logger.log(paint[level](JSON.stringify({ datetime: (0, Helpers_1.now)(), level, tag, data })));
     };
 }
 exports.json = json;

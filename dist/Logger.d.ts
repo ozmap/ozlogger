@@ -1,18 +1,29 @@
+/// <reference types="node" />
 import { LoggerMethods } from './util/interface/LoggerMethods';
 import { LogWrapper } from './util/type/LogWrapper';
 import { AbstractLogger } from './util/type/AbstractLogger';
+import { LogLevels } from './util/enum/LogLevels';
+import { Server } from 'http';
 /**
  * Logger module class.
  */
 export declare class Logger implements LoggerMethods {
     /**
+     * Temporary storage for timers.
+     */
+    private timers;
+    /**
+     * Temporary storage for timeouts.
+     */
+    private timeouts;
+    /**
      * Stores the logger wrapper being used.
      */
     protected logger: LogWrapper;
     /**
-     * Temporary storage for timers.
+     * Stores the HTTP server used to issue commands for the logger.
      */
-    private timers;
+    server: Server | void;
     /**
      * Logger module class constructor.
      *
@@ -24,6 +35,33 @@ export declare class Logger implements LoggerMethods {
         tag?: string;
         client?: AbstractLogger;
     });
+    /**
+     * Method for stopping HTTP server and cleaning up timeouts.
+     */
+    stop(): Promise<void>;
+    /**
+     * Factory method for enabling/disabling logging methods.
+     *
+     * @param   enabled  If the retrieved function is enabled.
+     * @param   name     Log level name.
+     * @returns The logging function.
+     */
+    private toggle;
+    /**
+     * Method for handling scheduling logger tasks.
+     *
+     * @param   id        The task identifier.
+     * @param   callback  The task handler.
+     * @param   duration  The time until the task is called.
+     */
+    private schedule;
+    /**
+     * Method for configuring which logging methods are enabled based on the log level.
+     *
+     * @param   level  The minimal level being configured.
+     * @returns The configured log level name.
+     */
+    protected configure(level: keyof typeof LogLevels): string;
     /**
      * Logger module initializer method.
      *
@@ -56,7 +94,7 @@ export declare class Logger implements LoggerMethods {
      *
      * @deprecated Support for this method is
      * only for avoiding upgrade issues, but
-     * functionality is not working anymore.
+     * functionality is removed.
      * @param   tags  Strings to tag the log message.
      * @returns Logger instance.
      */

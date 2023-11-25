@@ -1,10 +1,10 @@
 export declare const LogLevels: {
-    readonly critical: 0;
-    readonly error: 0;
-    readonly warn: 1;
-    readonly info: 2;
-    readonly http: 2;
-    readonly audit: 3;
-    readonly debug: 4;
-    readonly silly: 4;
+    readonly critical: 0; /** @deprecated */
+    readonly error: 1;
+    readonly warn: 2;
+    readonly info: 3;
+    readonly http: 4; /** @deprecated */
+    readonly audit: 5;
+    readonly debug: 6;
+    readonly silly: 7; /** @deprecated */
 };

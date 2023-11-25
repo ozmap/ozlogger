@@ -1,3 +1,3 @@
 export type AbstractLogger = {
-    log(arg: string): void;
+	log(arg: string): void;
 };

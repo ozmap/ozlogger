@@ -12,7 +12,6 @@ const json_1 = require("./json");
  * @returns The logging method.
  */
 function getLogWrapper(output, logger, tag) {
-    output = output === null || output === void 0 ? void 0 : output.toLowerCase();
     switch (output) {
         case 'text':
             return (0, text_1.text)(logger, tag);

@@ -10,12 +10,13 @@ const Helpers_1 = require("../util/Helpers");
  * @returns The logging method.
  */
 function text(logger, tag) {
+    const paint = (0, Helpers_1.colorized)();
     return async (level, ...args) => {
         let data = '';
         for (let i = 0; i < args.length; ++i) {
             data += (0, Helpers_1.stringify)(args[i]);
         }
-        logger.log(`${(0, Helpers_1.now)()} [${level}] ${tag} ${data}`);
+        logger.log(paint[level](`${(0, Helpers_1.now)()} [${level}] ${tag} ${data}`));
     };
 }
 exports.text = text;

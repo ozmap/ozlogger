@@ -21,6 +21,8 @@
         "prettier/prettier": "error",
         "jsdoc/require-jsdoc": "error",
         "jsdoc/require-returns-type": "off",
-        "jsdoc/require-param-type": "off"
+        "jsdoc/require-param-type": "off",
+		"@typescript-eslint/no-empty-function": "off",
+		"@typescript-eslint/no-empty-interface": "off"
     }
 }
