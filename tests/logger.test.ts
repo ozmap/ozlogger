@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import createLogger, { OZLogger } from '../lib';
+import createLogger, { Logger } from '../lib';
 
-const logger: OZLogger = createLogger();
+const logger: Logger = createLogger();
 
 describe('OZLogger factory test suite.', () => {
 	// Wait for the HTTP server to be up

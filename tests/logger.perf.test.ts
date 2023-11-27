@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
-import createLogger, { OZLogger } from '../lib';
+import createLogger, { Logger } from '../lib';
 
-const logger: OZLogger = createLogger('perf', {
+const logger: Logger = createLogger('perf', {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	log: (msg: string) => {}
 });

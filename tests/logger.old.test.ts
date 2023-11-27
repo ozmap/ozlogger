@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { OZLogger } from '../lib';
+import { Logger as OZLogger } from '../lib';
 
 let logger: OZLogger;
 const config = {};
