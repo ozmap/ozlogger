@@ -20,6 +20,6 @@ export function text(logger: AbstractLogger, tag?: string): LogWrapper {
 			data += stringify(args[i]);
 		}
 
-		logger.log(paint[level](`${now()} [${level}] ${tag} ${data}`));
+		logger.log(paint[level](`${now()} [${level}] ${tag ?? ''} ${data}`));
 	};
 }
