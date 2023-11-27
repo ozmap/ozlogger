@@ -79,7 +79,11 @@ export class Logger implements LoggerMethods {
 
 			if (!this.server) return resolve();
 
-			this.server.close((e) => (e ? reject(e) : resolve()));
+			this.server.close((e) => {
+				delete process.env.OZLOGGER_HTTP;
+
+				return e ? reject(e) : resolve();
+			});
 		});
 	}
 

@@ -20,6 +20,10 @@ export function setupLogServer(
 ): Server | void {
 	if (cluster.isWorker) return;
 
+	if (process.env.OZLOGGER_HTTP?.match(/true/i)) return;
+
+	process.env.OZLOGGER_HTTP = 'true';
+
 	return http
 		.createServer(
 			async (req: IncomingMessage, res: ServerResponse): Promise<void> =>
