@@ -29,7 +29,7 @@ export function registerEvent(
 export function broadcastEvent(event: string, data: EventData = {}): void {
 	if (cluster.isWorker) return;
 
-	for (const worker of Object.values(cluster.workers || {})) {
+	for (const worker of Object.values(cluster.workers ?? {})) {
 		if (!worker?.send) continue;
 
 		Object.assign(data, { event });
