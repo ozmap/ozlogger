@@ -1,4 +1,4 @@
-import { colorized, now, stringify } from '../util/Helpers';
+import { colorized, datetime, stringify } from '../util/Helpers';
 import { LevelTags } from '../util/enum/LevelTags';
 import { AbstractLogger } from '../util/type/AbstractLogger';
 import { LogWrapper } from '../util/type/LogWrapper';
@@ -11,6 +11,7 @@ import { LogWrapper } from '../util/type/LogWrapper';
  * @returns The logging method.
  */
 export function json(logger: AbstractLogger, tag?: string): LogWrapper {
+	const now = datetime<{ datetime?: string }>();
 	const paint = colorized();
 
 	return async (level: (typeof LevelTags)[number], ...args: unknown[]) => {
@@ -21,7 +22,7 @@ export function json(logger: AbstractLogger, tag?: string): LogWrapper {
 		}
 
 		logger.log(
-			paint[level](JSON.stringify({ datetime: now(), level, tag, data }))
+			paint[level](JSON.stringify({ ...now(), level, tag, data }))
 		);
 	};
 }

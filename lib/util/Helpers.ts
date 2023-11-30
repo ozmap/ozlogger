@@ -5,15 +5,6 @@ import { LoggerColorized } from './interface/LoggerColorized';
 import { Outputs } from './enum/Outputs';
 
 /**
- * Return the current date and time.
- *
- * @returns The current datetime.
- */
-export function now(): string {
-	return new Date().toISOString();
-}
-
-/**
  * Outputs the stringified version of the input data.
  *
  * @param   data  The data to stringify.
@@ -97,6 +88,26 @@ export function output(): (typeof Outputs)[number] {
 		'json') as (typeof Outputs)[number];
 
 	return Outputs.indexOf(input) < 0 ? 'json' : input;
+}
+
+/**
+ * Return the current date and time closure.
+ *
+ * @returns The current datetime closure.
+ */
+export function datetime<T>(): () => T {
+	const withDatetime = !!process.env.OZLOGGER_DATETIME?.match(/true/i);
+
+	switch (output()) {
+		case 'text':
+			return withDatetime
+				? () => `${new Date().toISOString()} ` as T
+				: () => '' as T;
+		case 'json':
+			return withDatetime
+				? () => ({ datetime: new Date().toISOString() } as T)
+				: () => ({} as T);
+	}
 }
 
 /**
