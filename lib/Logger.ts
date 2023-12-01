@@ -221,7 +221,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public silly(...args: unknown[]): void {}
+	public silly(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * Debugging logging method.
@@ -229,7 +233,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public debug(...args: unknown[]): void {}
+	public debug(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * Audit logging method.
@@ -237,7 +245,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public audit(...args: unknown[]): void {}
+	public audit(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * HTTP request logging method. Same as '.info()'.
@@ -246,7 +258,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public http(...args: unknown[]): void {}
+	public http(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * Information logging method.
@@ -254,7 +270,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public info(...args: unknown[]): void {}
+	public info(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * Warning logging method.
@@ -262,7 +282,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public warn(...args: unknown[]): void {}
+	public warn(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * Error logging method.
@@ -270,7 +294,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public error(...args: unknown[]): void {}
+	public error(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 
 	/**
 	 * Critical logging method. Same as '.error()'.
@@ -279,7 +307,11 @@ export class Logger implements LoggerMethods {
 	 * @param   args  Data to be logged.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	public critical(...args: unknown[]): void {}
+	public critical(...args: unknown[]): void {
+		// Must be overriden when the logger is
+		// configured with a given log level.
+		// By default it is disabled.
+	}
 }
 
 /**
