@@ -8,8 +8,7 @@ import http, {
 import { ProcessedRequest } from '../util/type/Http';
 import { HttpError } from './errors';
 import { Logger } from '../Logger';
-import { broadcastEvent } from '../util/Events';
-import { isJsonObject } from '../util/Helpers';
+import routes from './routes';
 
 /**
  * Function to create HTTP server on the primary process.
@@ -181,61 +180,9 @@ async function router<
 >(req: REQ, res: RES): Promise<RES> {
 	const route = `${req.method} ${req.url}`;
 
-	// @todo Leandro: Simplified logic for handling routes and
-	// their requests. In the future it could be a Map with the
-	// method + path as key and the value stored being the
-	// request handler. That would make possible to register
-	// multiple routes without having to change the router code,
-	// therefore abstracting the request routing logic.
-	switch (route) {
-		case 'POST /changeLevel': {
-			if (!req.reqIsJson)
-				throw new HttpError(
-					`Request content must be of type JSON.`,
-					409
-				);
+	if (!(route in routes)) throw new HttpError('Not found', 404);
 
-			if (!isJsonObject(req.body))
-				throw new HttpError(
-					`Invalid request payload. Data must be a key/value pair object.`,
-					409
-				);
-
-			const data = req.body as Record<string, unknown>;
-
-			if (!('level' in data))
-				throw new HttpError(
-					`Request is missing 'level' parameter.`,
-					409
-				);
-
-			if (typeof data.level !== 'string')
-				throw new HttpError(
-					`Request parameter 'level' must be a string.`,
-					409
-				);
-
-			if (!('duration' in data))
-				throw new HttpError(
-					`Request is missing 'duration' parameter.`,
-					409
-				);
-
-			if (typeof data.duration !== 'number' || data.duration < 1)
-				throw new HttpError(
-					`Request parameter 'duration' must be a non zero positive integer.`,
-					409
-				);
-
-			broadcastEvent('ozlogger.http.changeLevel', data);
-
-			break;
-		}
-
-		default: {
-			throw new HttpError('Not found', 404);
-		}
-	}
+	await routes[route](req, res);
 
 	return res.writeHead(200).end();
 }
