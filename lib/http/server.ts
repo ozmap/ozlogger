@@ -1,8 +1,14 @@
 import cluster from 'cluster';
-import http, { IncomingMessage, Server, ServerResponse } from 'http';
+import http, {
+	IncomingHttpHeaders,
+	IncomingMessage,
+	Server,
+	ServerResponse
+} from 'http';
 import { ProcessedRequest } from '../util/type/Http';
-import { broadcastEvent } from '../util/Events';
+import { HttpError } from './errors';
 import { Logger } from '../Logger';
+import { broadcastEvent } from '../util/Events';
 import { isJsonObject } from '../util/Helpers';
 
 /**
@@ -25,76 +31,131 @@ export function setupLogServer(
 	process.env.OZLOGGER_HTTP = 'true';
 
 	return http
-		.createServer(
-			async (req: IncomingMessage, res: ServerResponse): Promise<void> =>
-				new Promise<void>((done) => {
-					const reqJson =
-						'content-type' in req.headers
-							? Array.isArray(req.headers['content-type'])
-								? req.headers['content-type'].some(
-										(header) =>
-											header === 'application/json'
-								  ) ?? false
-								: req.headers['content-type']
-										?.split(' ')
-										.some(
-											(header) =>
-												header === 'application/json'
-										) ?? false
-							: false;
-					const resJson =
-						'accept' in req.headers
-							? Array.isArray(req.headers['accept'])
-								? req.headers['accept'].some(
-										(header) =>
-											header === 'application/json'
-								  ) ?? false
-								: req.headers['accept']
-										?.split(' ')
-										.some(
-											(header) =>
-												header === 'application/json'
-										) ?? false
-							: false;
-
-					Object.assign(req, { reqJson, resJson });
-
-					if (req.method === 'GET')
-						return router(req as ProcessedRequest, res).finally(
-							done
-						);
-
-					let data = Buffer.from('');
-
-					req.on('data', (chunk) => {
-						data += chunk;
-
-						// Too much data from HTTP request
-						if (limit(data, 5)) req.socket.destroy();
-					});
-					req.on('end', () => {
-						try {
-							Object.assign(req, {
-								body: reqJson
-									? JSON.parse(data.toString())
-									: data.toString()
-							});
-						} catch (e) {
-							return respond(
-								res,
-								422,
-								resJson,
-								`Unable to process request data.`
-							);
-						}
-
-						router(req as ProcessedRequest, res).finally(done);
-					});
-				})
-		)
+		.createServer(handleRequest(logger))
 		.listen(port, address, () => {
 			logger.info(`Log server started listening at ${address}:${port}`);
 		});
+}
+
+/**
+ * Closure for handling incoming HTTP requests.
+ *
+ * @param   logger  The logger client.
+ * @returns The HTTP request handler.
+ */
+function handleRequest(
+	logger: Logger
+): (req: IncomingMessage, res: ServerResponse) => Promise<ServerResponse> {
+	return async (req, res) => {
+		const reqIsJson = isContentTypeJson(req.headers);
+		const resIsJson = isAcceptTypeJson(req.headers);
+
+		Object.assign(req, { reqIsJson, resIsJson });
+
+		if (req.method !== 'GET') {
+			try {
+				await parseBody(req, reqIsJson ? 'json' : 'text');
+			} catch (e) {
+				if (e instanceof HttpError) return e.respond(res, resIsJson);
+
+				logger.error(e);
+
+				return new HttpError(
+					`Something went wrong while processing your request content.`,
+					500
+				).respond(res, resIsJson);
+			}
+		}
+
+		return router(req as ProcessedRequest, res).catch((e) => {
+			if (e instanceof HttpError) return e.respond(res, resIsJson);
+
+			logger.error(e);
+
+			return new HttpError(
+				`Something went wrong while handling your request.`,
+				500
+			).respond(res, resIsJson);
+		});
+	};
+}
+
+/**
+ * Method for processing request contents.
+ *
+ * @param   req   The incoming HTTP request.
+ * @param   type  The content type.
+ */
+async function parseBody<T extends IncomingMessage>(
+	req: T,
+	type: string
+): Promise<void> {
+	const data: Buffer[] = [];
+
+	for await (const chunk of req) {
+		data.push(chunk as Buffer);
+
+		if (limit(Buffer.concat(data), 5)) {
+			req.socket.destroy();
+			throw new HttpError('Content too large', 413);
+		}
+	}
+
+	try {
+		Object.assign(req, {
+			body:
+				type === 'json'
+					? JSON.parse(Buffer.concat(data).toString())
+					: Buffer.concat(data).toString()
+		});
+	} catch (e) {
+		throw new HttpError('Unprocessable content', 422);
+	}
+}
+
+/**
+ * Function for checking if HTTP header
+ * is present and has the given value.
+ *
+ * @param   headers  The HTTP request headers.
+ * @param   header   The HTTP header being checked.
+ * @param   value    The HTTP header value being verified.
+ * @returns If the header is present and has the given value.
+ */
+export function checkRequestHeader(
+	headers: IncomingHttpHeaders,
+	header: string,
+	value: string
+): boolean {
+	if (!(header in headers)) return false;
+
+	return Array.isArray(headers[header])
+		? (headers[header] as string[]).some((h) => h.trim() === value) ?? false
+		: (headers[header] as string)
+				?.split(',')
+				.some((h) => h.trim() === value) ?? false;
+}
+
+/**
+ * Validation method for Content-Type HTTP
+ * header having the application/json type.
+ *
+ * @param   headers  The HTTP request headers.
+ * @returns If the request content is JSON.
+ */
+function isContentTypeJson(headers: IncomingHttpHeaders): boolean {
+	return checkRequestHeader(headers, 'content-type', 'application/json');
+}
+
+/**
+ * Validation method for Accept HTTP header
+ * having the application/json type.
+ *
+ * @param   headers  The HTTP request headers.
+ * @returns If JSON is accepted as response.
+ */
+function isAcceptTypeJson(headers: IncomingHttpHeaders): boolean {
+	return checkRequestHeader(headers, 'accept', 'application/json');
 }
 
 /**
@@ -106,26 +167,6 @@ export function setupLogServer(
  */
 function limit(data: Buffer, mb: number): boolean {
 	return data.length > mb * 1000000;
-}
-
-/**
- * Function for responding HTTP request with standard payload.
- *
- * @param   res      The server response instance.
- * @param   code     The status code to send.
- * @param   resJson  If the response content is JSON.
- * @param   message  The response message to be sent.
- * @returns The server response.
- */
-function respond<RES extends ServerResponse = ServerResponse>(
-	res: ServerResponse,
-	code: number,
-	resJson: boolean,
-	message: string
-): RES {
-	return res
-		.writeHead(code)
-		.end(resJson ? JSON.stringify({ message }) : message) as RES;
 }
 
 /**
@@ -148,54 +189,42 @@ async function router<
 	// therefore abstracting the request routing logic.
 	switch (route) {
 		case 'POST /changeLevel': {
-			if (!req.reqJson)
-				return respond<RES>(
-					res,
-					409,
-					req.resJson,
-					`Request content must be of type JSON.`
+			if (!req.reqIsJson)
+				throw new HttpError(
+					`Request content must be of type JSON.`,
+					409
 				);
 
 			if (!isJsonObject(req.body))
-				return respond<RES>(
-					res,
-					409,
-					req.resJson,
-					`Invalid request payload. Data must be a key/value pair object.`
+				throw new HttpError(
+					`Invalid request payload. Data must be a key/value pair object.`,
+					409
 				);
 
 			const data = req.body as Record<string, unknown>;
 
 			if (!('level' in data))
-				return respond<RES>(
-					res,
-					409,
-					req.resJson,
-					`Request is missing 'level' parameter.`
+				throw new HttpError(
+					`Request is missing 'level' parameter.`,
+					409
 				);
 
 			if (typeof data.level !== 'string')
-				return respond<RES>(
-					res,
-					409,
-					req.resJson,
-					`Request parameter 'level' must be a string.`
+				throw new HttpError(
+					`Request parameter 'level' must be a string.`,
+					409
 				);
 
 			if (!('duration' in data))
-				return respond<RES>(
-					res,
-					409,
-					req.resJson,
-					`Request is missing 'duration' parameter.`
+				throw new HttpError(
+					`Request is missing 'duration' parameter.`,
+					409
 				);
 
 			if (typeof data.duration !== 'number' || data.duration < 1)
-				return respond<RES>(
-					res,
-					409,
-					req.resJson,
-					`Request parameter 'duration' must be a non zero positive integer.`
+				throw new HttpError(
+					`Request parameter 'duration' must be a non zero positive integer.`,
+					409
 				);
 
 			broadcastEvent('ozlogger.http.changeLevel', data);
@@ -204,9 +233,9 @@ async function router<
 		}
 
 		default: {
-			return respond<RES>(res, 404, req.resJson, `not found`);
+			throw new HttpError('Not found', 404);
 		}
 	}
 
-	return respond<RES>(res, 200, req.resJson, `ok`);
+	return res.writeHead(200).end();
 }
