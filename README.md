@@ -24,3 +24,20 @@ const OZLogger = createLogger();
 // Example of simple debug log
 OZLogger.debug("Simple test log");
 ```
+
+## Changing log levels
+
+In order to change the log level at runtime the following
+HTTP request can be made:
+
+```
+POST http://localhost:9898/changeLevel
+{
+    "level": "<log-level>",
+    "duration": <milliseconds>
+}
+```
+
+```curl
+curl -L -X POST -H 'Content-Type: application/json' -d '{"level":"<log-level>","duration":<milliseconds>}' http://localhost:9898/changeLevel
+```
