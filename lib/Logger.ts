@@ -54,14 +54,13 @@ export class Logger implements LoggerMethods {
 				level: keyof typeof LogLevels;
 				duration: number;
 			}) => {
-				const newLevel = this.configure(data.level).toUpperCase();
-				this.warn(`Changed log level to ${newLevel}`);
-
+				// Changing log level
+				this.configure(data.level).toUpperCase();
 				this.schedule(
 					data.event,
 					() => {
-						const oldLevel = this.configure(level()).toUpperCase();
-						this.warn(`Reset log level to ${oldLevel}`);
+						// Reseting log level
+						this.configure(level()).toUpperCase();
 					},
 					data.duration
 				);
