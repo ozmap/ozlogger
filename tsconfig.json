@@ -1,24 +1,24 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"display": "Node 16",
-	"extends": "@tsconfig/node16/tsconfig.json",
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "display": "Node 16",
+    "extends": "@tsconfig/node16/tsconfig.json",
 
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es2019",
-		"lib": ["es2019"],
-		"declaration": true,
-		"outDir": "dist",
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es2019",
+        "lib": ["es2019"],
+        "declaration": true,
+        "outDir": "dist",
 
-		"moduleResolution": "node",
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"strictPropertyInitialization": false,
-		"skipLibCheck": true,
-		"strict": true,
-		"types": ["node", "jest"]
-	},
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strictPropertyInitialization": false,
+        "skipLibCheck": true,
+        "strict": true,
+        "types": ["node", "jest"]
+    },
 
-	"include": ["lib/**/*.ts", "cli/**/*.ts"],
-	"exclude": ["**/*.test.*"]
+    "include": ["lib/**/*.ts"],
+    "exclude": ["**/*.test.*"]
 }

@@ -7,7 +7,7 @@ DevOZ logger module.
 The available methods are presented in level hierarchy order.
 
  - `.debug(...messages: any[])`
- - `.http(...messages: any[])`
+ - `.audit(...messages: any[])`
  - `.info(...messages: any[])`
  - `.warn(...messages: any[])`
  - `.error(...messages: any[])`
@@ -16,64 +16,28 @@ The available methods are presented in level hierarchy order.
 Here is a simple code snippet example of using the OZLogger:
 
 ```javascript
-import { OZLogger } from '@ozmap/logger';
+import createLogger from '@ozmap/logger';
 
 // Initialize and configure the logging facility
-OZLogger.init({
-    app: 'test',
-    level: 'debug',
-    targets: ['stdout']
-});
-
+const OZLogger = createLogger();
 
 // Example of simple debug log
 OZLogger.debug("Simple test log");
-
-// Example of simple debug log with single tag
-OZLogger.tag("Tag").debug("Another test log");
 ```
 
-Another code snippet example shows the OZLogger configured
-to send the logs directly to a Mongo database instance. In
-this case, no console output will be shown due to it being
-used in a production environment.
+## Changing log levels
 
-```javascript
-import { OZLogger } from '@ozmap/logger';
+In order to change the log level at runtime the following
+HTTP request can be made:
 
-// Mongo connection is only established
-// on production environments
-process.env.NODE_ENV = 'prod';
+```
+POST http://localhost:9898/changeLevel
+{
+    "level": "<log-level>",
+    "duration": <milliseconds>
+}
+```
 
-// Initialize and configure the logging
-// facility with the Mongo transport
-OZLogger.init({
-    app: 'test',
-    level: 'debug',
-    targets: ['mongo'],
-    mongo: {
-        server: {
-            host: 'localhost',
-            port: 27017,
-            database: 'application',
-            collection: 'ozlogs',
-            level: 'info'
-        },
-        auth: {
-            user: 'username',
-            pass: 'password'
-        },
-        options: {
-            useUnifiedTopology: true,
-            authSource: 'admin'
-        }
-    }
-});
-
-
-// Example of simple info log
-OZLogger.info("Simple test log");
-
-// Example of simple info log with multiple tags
-OZLogger.tag("Tag1", "Tag2").info("Another test log");
+```curl
+curl -L -X POST -H 'Content-Type: application/json' -d '{"level":"<log-level>","duration":<milliseconds>}' http://localhost:9898/changeLevel
 ```
