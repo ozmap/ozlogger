@@ -134,3 +134,5 @@ tags
 *.cnf
 *.cfg
 *.cf
+
+dist

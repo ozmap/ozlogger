@@ -3,12 +3,12 @@ import { createHash } from 'crypto';
 /**
  * Utility function for obfuscating values in objects.
  *
- * @param   { object }             original  Original JSON object.
- * @param   { string | string[] }  fields    Key names to be obfuscated.
- * @param   { string }             char      The character used when masking values.
- * @returns { object }  The obfuscated object.
+ * @param   original  Original JSON object.
+ * @param   fields    Key names to be obfuscated.
+ * @param   char      The character used when masking values.
+ * @returns The obfuscated object.
  */
-export function mask<T = { [key: string]: unknown }>(
+export function mask<T = Record<string, unknown>>(
 	original: T,
 	fields: string | string[],
 	char = '*'
@@ -17,18 +17,18 @@ export function mask<T = { [key: string]: unknown }>(
 
 	// Lookup table used to reduce the time complexity for
 	// check calls to see which keys are marked for masking
-	const lookup: { [key: string]: boolean } = fields.reduce((acc, val) => {
+	const lookup: Record<string, boolean> = fields.reduce((acc, val) => {
 		return { ...acc, [val]: true };
 	}, {});
 
-	const walk = (data: { [key: string]: unknown } | unknown): unknown => {
+	const walk = (data: Record<string, unknown> | unknown): unknown => {
 		// If the passed in element is not an object
 		// we've reached the end of the recursive call
 		if (!data || typeof data !== 'object') return data;
 
-		const partition: { [key: string]: unknown } = {};
+		const partition: Record<string, unknown> = {};
 
-		const { ...obj } = data as { [key: string]: unknown };
+		const { ...obj } = data as Record<string, unknown>;
 
 		for (const key in obj) {
 			// Use the lookup table to check if
@@ -56,11 +56,11 @@ export function mask<T = { [key: string]: unknown }>(
 /**
  * Utility function for removing keys from object.
  *
- * @param   { object }             original  Original JSON object.
- * @param   { string | string[] }  fields    Key names to be removed.
- * @returns { object }  The filtered object.
+ * @param   original  Original JSON object.
+ * @param   fields    Key names to be removed.
+ * @returns The filtered object.
  */
-export function filter<T = { [key: string]: unknown }>(
+export function filter<T = Record<string, unknown>>(
 	original: object,
 	fields: string | string[]
 ): T {
@@ -68,18 +68,18 @@ export function filter<T = { [key: string]: unknown }>(
 
 	// Lookup table used to reduce the time complexity for
 	// check calls to see which keys are marked for removal
-	const lookup: { [key: string]: boolean } = fields.reduce((acc, val) => {
+	const lookup: Record<string, boolean> = fields.reduce((acc, val) => {
 		return { ...acc, [val]: true };
 	}, {});
 
-	const walk = (data: { [key: string]: unknown } | unknown): unknown => {
+	const walk = (data: Record<string, unknown> | unknown): unknown => {
 		// If the passed in element is not an object
 		// we've reached the end of the recursive call
 		if (!data || typeof data !== 'object') return data;
 
-		const partition: { [key: string]: unknown } = {};
+		const partition: Record<string, unknown> = {};
 
-		const { ...obj } = data as { [key: string]: unknown };
+		const { ...obj } = data as Record<string, unknown>;
 
 		for (const key in obj) {
 			// Use the lookup table to check if
