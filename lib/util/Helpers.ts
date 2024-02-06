@@ -116,14 +116,46 @@ export function datetime<T>(): () => T {
  * @returns The port number and interface address.
  */
 export function host(): [number, string] {
-	// @todo Leandro: Implement support for the following input formats:
-	// '9898'
-	// ':9898'
-	// 'localhost'
-	// 'localhost:9898'
-	// '[::1]:9898'
-	// '127.0.0.1:9898'
 	const input = process.env.OZLOGGER_SERVER || '9898';
 
-	return [parseInt(input), 'localhost'];
+	let port = 9898;
+	let hostname = 'localhost';
+
+	// Format: '9898'
+	if (/^\d+$/.test(input)) {
+		port = parseInt(input);
+		return [port, hostname];
+	}
+
+	// Format: ':9898'
+	if (/^:\d+$/.test(input)) {
+		port = parseInt(input.slice(1));
+		return [port, hostname];
+	}
+
+	// Format: '[::1]:9898'
+	if (/^\[.*\]:\d+$/.test(input)) {
+		const [ipv6, p] = input.slice(1, -1).split(']:');
+		hostname = ipv6;
+		port = parseInt(p);
+		return [port, hostname];
+	}
+
+	// Format: '127.0.0.1:9898'
+	if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(input)) {
+		const [ipv4, p] = input.split(':');
+		hostname = ipv4;
+		port = parseInt(p);
+		return [port, hostname];
+	}
+
+	// Format: 'localhost' or 'localhost:9898'
+	if (/^[^\s:]+(:\d+)?$/.test(input)) {
+		const [domain, p] = input.split(':');
+		if (domain) hostname = domain;
+		if (p) port = parseInt(p);
+		return [port, hostname];
+	}
+
+	throw new Error(`Unsupported HTTP server address (${input})`);
 }
