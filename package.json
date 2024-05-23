@@ -11,7 +11,7 @@
 		"test:watch": "jest --watchAll --detectOpenHandles",
 		"lint": "eslint --ext .js,.ts",
 		"format": "prettier --write",
-		"prepare": "husky install"
+		"prepare": "husky"
 	},
 	"types": "dist/index.d.ts",
 	"files": [
