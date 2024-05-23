@@ -105,8 +105,8 @@ export function datetime<T>(): () => T {
 				: () => '' as T;
 		case 'json':
 			return withDatetime
-				? () => ({ datetime: new Date().toISOString() } as T)
-				: () => ({} as T);
+				? () => ({ datetime: new Date().toISOString() }) as T
+				: () => ({}) as T;
 	}
 }
 
