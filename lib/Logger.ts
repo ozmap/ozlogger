@@ -36,15 +36,18 @@ export class Logger implements LoggerMethods {
 	/**
 	 * Logger module class constructor.
 	 *
-	 * @param   opts         Logger module configuration options.
-	 * @param   opts.tag     Tag with which the logger is being created.
-	 * @param   opts.client  Underlying abstract logger to override console.
+	 * @param   opts           Logger module configuration options.
+	 * @param   opts.tag       Tag with which the logger is being created.
+	 * @param   opts.client    Underlying abstract logger to override console.
+	 * @param   opts.noServer  Disable the embedded http server for runtime actions.
 	 */
-	public constructor(opts: { tag?: string; client?: AbstractLogger } = {}) {
+	public constructor(
+		opts: { tag?: string; client?: AbstractLogger; noServer?: boolean } = {}
+	) {
 		this.logger = getLogWrapper(output(), opts.client ?? console, opts.tag);
 		this.configure(level());
 
-		this.server = setupLogServer(...host(), this);
+		if (!opts.noServer) this.server = setupLogServer(...host(), this);
 
 		registerEvent(
 			this,
@@ -306,10 +309,14 @@ export class Logger implements LoggerMethods {
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag     Tag with which the logger is being created.
- * @param   client  Underlying abstract logger to override console.
+ * @param   tag            Tag with which the logger is being created.
+ * @param   opts.client    Underlying abstract logger to override console.
+ * @param   opts.noServer  Disable the embedded http server for runtime actions.
  * @returns Logger instace
  */
-export function createLogger(tag?: string, client?: AbstractLogger) {
-	return new Logger({ tag, client });
+export function createLogger(
+	tag?: string,
+	opts: { client?: AbstractLogger; noServer?: boolean } = {}
+) {
+	return new Logger({ tag, ...opts });
 }

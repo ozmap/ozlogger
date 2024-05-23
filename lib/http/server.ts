@@ -25,7 +25,7 @@ export function setupLogServer(
 ): Server | void {
 	if (cluster.isWorker) return;
 
-	if (process.env.OZLOGGER_HTTP?.match(/true/i)) return;
+	if (process.env.OZLOGGER_HTTP?.match(/false/i)) return;
 
 	process.env.OZLOGGER_HTTP = 'true';
 
