@@ -27,7 +27,7 @@ export function setupLogServer(
 
 	if (process.env.OZLOGGER_HTTP?.match(/false/i)) return;
 
-	process.env.OZLOGGER_HTTP = 'true';
+	process.env.OZLOGGER_HTTP = 'false';
 
 	return http
 		.createServer(handleRequest(logger))
