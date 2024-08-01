@@ -27,13 +27,18 @@ export function registerEvent(
  * @param   [data={}]  The event data being passed in.
  */
 export function broadcastEvent(event: string, data: EventData = {}): void {
-	if (cluster.isWorker) return;
+	const payload = { ...data, event } as unknown as NodeJS.Signals;
 
-	for (const worker of Object.values(cluster.workers ?? {})) {
-		if (!worker?.send) continue;
+	if (!process.send) {
+		// Non clustered application
+		process.emit('message' as NodeJS.Signals, payload);
+	} else {
+		if (cluster.isWorker) return;
 
-		Object.assign(data, { event });
+		for (const worker of Object.values(cluster.workers ?? {})) {
+			if (!worker?.send) continue;
 
-		worker.send(data);
+			worker.send(payload);
+		}
 	}
 }
