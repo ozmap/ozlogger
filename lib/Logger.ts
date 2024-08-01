@@ -58,12 +58,12 @@ export class Logger implements LoggerMethods {
 				duration: number;
 			}) => {
 				// Changing log level
-				this.configure(data.level).toUpperCase();
+				this.configure(data.level);
 				this.schedule(
 					data.event,
 					() => {
 						// Reseting log level
-						this.configure(level()).toUpperCase();
+						this.configure(level());
 					},
 					data.duration
 				);
@@ -212,6 +212,15 @@ export class Logger implements LoggerMethods {
 	 */
 	public tag(...tags: string[]): Logger {
 		return this;
+	}
+
+	/**
+	 * Method for changing log levels.
+	 *
+	 * @param   level  Level to use when logging messages.
+	 */
+	public changeLevel(level: keyof typeof LogLevels) {
+		this.configure(level);
 	}
 
 	/**
