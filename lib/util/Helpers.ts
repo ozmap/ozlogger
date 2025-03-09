@@ -11,7 +11,11 @@ import { Outputs } from './enum/Outputs';
  * @returns The stringified data.
  */
 export function stringify(data: unknown): string {
-	return typeof data !== 'string' ? format('%O', data) : data;
+	if (typeof data === 'string') return data;
+
+	if (isJsonObject(data) || isJsonArray(data)) return JSON.stringify(data);
+
+	return format('%O', data);
 }
 
 /**
@@ -38,13 +42,28 @@ export function colorized(): Readonly<LoggerColorized> {
 }
 
 /**
+ * Function for checking the data type without relying on
+ * the generic typeof functionality.
+ *
+ * @param   data  The data being checked for its type.
+ * @returns The internal tag that represents the data type.
+ */
+export function typeOf(data: unknown) {
+	const internalTag = Object.prototype.toString.call(data);
+
+	if (!internalTag) return `Unknown`;
+
+	return internalTag.slice(8, -1);
+}
+
+/**
  * Function for checking if data is a key/value pair object.
  *
  * @param   data  The data being checked.
  * @returns Whether or not the data is an object.
  */
 export function isJsonObject(data: unknown): boolean {
-	return typeof data === 'object' && !Array.isArray(data) && data !== null;
+	return typeOf(data) === 'Object';
 }
 
 /**
@@ -54,7 +73,7 @@ export function isJsonObject(data: unknown): boolean {
  * @returns Whether or not the data is an array.
  */
 export function isJsonArray(data: unknown): boolean {
-	return typeof data === 'object' && Array.isArray(data) && data !== null;
+	return typeOf(data) === 'Array';
 }
 
 /**
