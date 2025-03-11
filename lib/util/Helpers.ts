@@ -11,7 +11,35 @@ import { Outputs } from './enum/Outputs';
  * @returns The stringified data.
  */
 export function stringify(data: unknown): string {
-	return typeof data !== 'string' ? format('%O', data) : data;
+	if (typeof data === 'string') return data;
+
+	if (isJsonObject(data) || isJsonArray(data)) {
+		return JSON.stringify(data, null, 2);
+	}
+
+	return format('%O', data);
+}
+
+/**
+ * Outputs the normalized version of the input data.
+ *
+ * @param   data  The data to normalize.
+ * @returns The normalized data.
+ */
+export function normalize(data: unknown) {
+	const t = typeof data;
+
+	if (
+		t === 'string' ||
+		t === 'number' ||
+		t === 'boolean' ||
+		isJsonObject(data) ||
+		isJsonArray(data)
+	) {
+		return data;
+	}
+
+	return format('%O', data);
 }
 
 /**
@@ -38,13 +66,32 @@ export function colorized(): Readonly<LoggerColorized> {
 }
 
 /**
+ * Function for checking the data type without relying on
+ * the generic typeof functionality.
+ *
+ * @param   data  The data being checked for its type.
+ * @returns The internal tag that represents the data type.
+ */
+export function typeOf(data: unknown) {
+	let internalTag = `Unknown`;
+
+	try {
+		internalTag = Object.prototype.toString.call(data)?.slice(8, -1);
+	} catch (e) {
+		internalTag = `Unknown`;
+	}
+
+	return internalTag;
+}
+
+/**
  * Function for checking if data is a key/value pair object.
  *
  * @param   data  The data being checked.
  * @returns Whether or not the data is an object.
  */
 export function isJsonObject(data: unknown): boolean {
-	return typeof data === 'object' && !Array.isArray(data) && data !== null;
+	return typeOf(data) === 'Object';
 }
 
 /**
@@ -54,7 +101,7 @@ export function isJsonObject(data: unknown): boolean {
  * @returns Whether or not the data is an array.
  */
 export function isJsonArray(data: unknown): boolean {
-	return typeof data === 'object' && Array.isArray(data) && data !== null;
+	return typeOf(data) === 'Array';
 }
 
 /**
