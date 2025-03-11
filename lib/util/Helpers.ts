@@ -13,8 +13,9 @@ import { Outputs } from './enum/Outputs';
 export function stringify(data: unknown): string {
 	if (typeof data === 'string') return data;
 
-	if (isJsonObject(data) || isJsonArray(data))
+	if (isJsonObject(data) || isJsonArray(data)) {
 		return JSON.stringify(data, null, 2);
+	}
 
 	return format('%O', data);
 }
