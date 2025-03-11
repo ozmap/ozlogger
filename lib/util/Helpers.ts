@@ -13,7 +13,30 @@ import { Outputs } from './enum/Outputs';
 export function stringify(data: unknown): string {
 	if (typeof data === 'string') return data;
 
-	if (isJsonObject(data) || isJsonArray(data)) return JSON.stringify(data);
+	if (isJsonObject(data) || isJsonArray(data))
+		return JSON.stringify(data, null, 2);
+
+	return format('%O', data);
+}
+
+/**
+ * Outputs the normalized version of the input data.
+ *
+ * @param   data  The data to normalize.
+ * @returns The normalized data.
+ */
+export function normalize(data: unknown) {
+	const t = typeof data;
+
+	if (
+		t === 'string' ||
+		t === 'number' ||
+		t === 'boolean' ||
+		isJsonObject(data) ||
+		isJsonArray(data)
+	) {
+		return data;
+	}
 
 	return format('%O', data);
 }
@@ -49,11 +72,15 @@ export function colorized(): Readonly<LoggerColorized> {
  * @returns The internal tag that represents the data type.
  */
 export function typeOf(data: unknown) {
-	const internalTag = Object.prototype.toString.call(data);
+	let internalTag = `Unknown`;
 
-	if (!internalTag) return `Unknown`;
+	try {
+		internalTag = Object.prototype.toString.call(data)?.slice(8, -1);
+	} catch (e) {
+		internalTag = `Unknown`;
+	}
 
-	return internalTag.slice(8, -1);
+	return internalTag;
 }
 
 /**
