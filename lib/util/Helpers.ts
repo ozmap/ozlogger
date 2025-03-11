@@ -11,7 +11,80 @@ import { Outputs } from './enum/Outputs';
  * @returns The stringified data.
  */
 export function stringify(data: unknown): string {
-	return typeof data !== 'string' ? format('%O', data) : data;
+	if (typeof data === 'string') return data;
+
+	if (isJsonObject(data) || isJsonArray(data)) {
+		return JSON.stringify(data, null, 2);
+	}
+
+	return format('%O', data);
+}
+
+/**
+ * Creates a replacer function for JSON.stringify to handle circular references.
+ * This version tracks parent objects (ancestors) to detect cycles.
+ * When a circular reference is detected, it returns the string "[Circular]" for that property.
+ *
+ * @returns A replacer function that handles circular objects by returning "[Circular]".
+ */
+export function getCircularReplacer(): (
+	this: unknown,
+	key: string,
+	value: unknown
+) => unknown {
+	const ancestors: Array<unknown> = [];
+
+	/**
+	 * The replacer function to be used with JSON.stringify.
+	 * It checks for circular references by comparing the current value against its ancestors.
+	 *
+	 * @param   key    The key of the property being stringified.
+	 * @param   value  The value of the property being stringified.
+	 * @returns The original value if it's not part of a circular reference,
+	 *          or the string "[Circular]" if a circular reference is detected.
+	 */
+	return function (this: unknown, key: string, value: unknown): unknown {
+		if (typeof value !== 'object' || value === null) {
+			return value;
+		}
+
+		while (
+			ancestors.length > 0 &&
+			ancestors[ancestors.length - 1] !== this
+		) {
+			ancestors.pop();
+		}
+
+		if (ancestors.includes(value)) {
+			return '[Circular]';
+		}
+
+		ancestors.push(value);
+
+		return value;
+	};
+}
+
+/**
+ * Outputs the normalized version of the input data.
+ *
+ * @param   data  The data to normalize.
+ * @returns The normalized data.
+ */
+export function normalize(data: unknown) {
+	const t = typeof data;
+
+	if (
+		t === 'string' ||
+		t === 'number' ||
+		t === 'boolean' ||
+		isJsonObject(data) ||
+		isJsonArray(data)
+	) {
+		return data;
+	}
+
+	return format('%O', data);
 }
 
 /**
@@ -38,13 +111,32 @@ export function colorized(): Readonly<LoggerColorized> {
 }
 
 /**
+ * Function for checking the data type without relying on
+ * the generic typeof functionality.
+ *
+ * @param   data  The data being checked for its type.
+ * @returns The internal tag that represents the data type.
+ */
+export function typeOf(data: unknown) {
+	let internalTag = `Unknown`;
+
+	try {
+		internalTag = Object.prototype.toString.call(data)?.slice(8, -1);
+	} catch (e) {
+		internalTag = `Unknown`;
+	}
+
+	return internalTag;
+}
+
+/**
  * Function for checking if data is a key/value pair object.
  *
  * @param   data  The data being checked.
  * @returns Whether or not the data is an object.
  */
 export function isJsonObject(data: unknown): boolean {
-	return typeof data === 'object' && !Array.isArray(data) && data !== null;
+	return typeOf(data) === 'Object';
 }
 
 /**
@@ -54,7 +146,7 @@ export function isJsonObject(data: unknown): boolean {
  * @returns Whether or not the data is an array.
  */
 export function isJsonArray(data: unknown): boolean {
-	return typeof data === 'object' && Array.isArray(data) && data !== null;
+	return typeOf(data) === 'Array';
 }
 
 /**
