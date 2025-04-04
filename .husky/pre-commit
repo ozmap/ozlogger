@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
 BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
 STAGED_FILES="$(git diff --name-only --cached --diff-filter=AM)"
