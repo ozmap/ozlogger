@@ -27,19 +27,13 @@ export function json(logger: AbstractLogger, tag?: string): LogWrapper {
 		}
 
 		try {
-			if (!process.env.OZLOGGER_PREVENT_CIRCULAR?.match(/false/i)) {
-				logger.log(
-					paint[level](
-						JSON.stringify(
-							{ ...now(), level, tag, data },
-							getCircularReplacer()
-						)
-					)
-				);
-				return;
-			}
 			logger.log(
-				paint[level](JSON.stringify({ ...now(), level, tag, data }))
+				paint[level](
+					JSON.stringify(
+						{ ...now(), level, tag, data },
+						getCircularReplacer()
+					)
+				)
 			);
 		} catch (e) {
 			logger.log(
