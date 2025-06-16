@@ -6,7 +6,6 @@ export type LogMethod = ((...args: unknown[]) => void) & {
 };
 
 export interface LoggerMethods
-	// extends Record<keyof typeof LogLevels, (...data: unknown[]) => void> {
 	extends Record<keyof typeof LogLevels, LogMethod> {
 	time(id: string): Logger;
 	timeEnd(id: string): Logger;
