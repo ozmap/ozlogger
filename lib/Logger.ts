@@ -1,5 +1,5 @@
 import { getLogWrapper } from './format';
-import { LoggerMethods } from './util/interface/LoggerMethods';
+import { LogMethod, LoggerMethods } from './util/interface/LoggerMethods';
 import { LogWrapper } from './util/type/LogWrapper';
 import { AbstractLogger } from './util/type/AbstractLogger';
 import { registerEvent } from './util/Events';
@@ -96,15 +96,20 @@ export class Logger implements LoggerMethods {
 	 * @param   name     Log level name.
 	 * @returns The logging function.
 	 */
-	private toggle(
-		enabled: boolean,
-		name: LevelTag
-	): (...args: unknown[]) => void {
-		if (!enabled) return (...args: unknown[]): void => {};
+	private toggle(enabled: boolean, name: LevelTag): LogMethod {
+		const fn = !enabled
+			? (..._: unknown[]): void => {}
+			: (...args: unknown[]): void => {
+					this.logger(name, ...args);
+				};
+		const timeEnd = !enabled
+			? (_: string) => this
+			: (id: string) => {
+					this.logger(name, `${id}: ${this.getTime(id)} ms`);
+					return this;
+				};
 
-		return (...args: unknown[]): void => {
-			this.logger(name, ...args);
-		};
+		return Object.assign(fn, { timeEnd });
 	}
 
 	/**
@@ -187,16 +192,26 @@ export class Logger implements LoggerMethods {
 	 * Method for retrieving tracked execution time.
 	 *
 	 * @param   id  Timer identifier tag.
-	 * @returns Logger instance.
+	 * @returns Time in milliseconds.
 	 */
-	public timeEnd(id: string): Logger {
+	protected getTime(id: string): number {
 		// Validation guard for unknown ID
 		if (!this.timers.has(id)) throw new Error(`Undefined identifier ${id}`);
 
-		const time: number = Date.now() - (this.timers.get(id) as number);
+		const time = Date.now() - this.timers.get(id)!;
 		this.timers.delete(id); // Cleanup
 
-		this.logger('INFO', `${id}: ${time} ms`);
+		return time;
+	}
+
+	/**
+	 * Method for retrieving tracked execution time.
+	 *
+	 * @param   id  Timer identifier tag.
+	 * @returns Logger instance.
+	 */
+	public timeEnd(id: string): Logger {
+		this.logger('INFO', `${id}: ${this.getTime(id)} ms`);
 
 		return this;
 	}
@@ -229,33 +244,21 @@ export class Logger implements LoggerMethods {
 	 * @deprecated Use .debug() logging method istead.
 	 * @param   args  Data to be logged.
 	 */
-	public silly(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public silly: LogMethod;
 
 	/**
 	 * Debugging logging method.
 	 *
 	 * @param   args  Data to be logged.
 	 */
-	public debug(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public debug: LogMethod;
 
 	/**
 	 * Audit logging method.
 	 *
 	 * @param   args  Data to be logged.
 	 */
-	public audit(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public audit: LogMethod;
 
 	/**
 	 * HTTP request logging method. Same as '.info()'.
@@ -263,44 +266,28 @@ export class Logger implements LoggerMethods {
 	 * @deprecated Use .info() logging method istead.
 	 * @param   args  Data to be logged.
 	 */
-	public http(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public http: LogMethod;
 
 	/**
 	 * Information logging method.
 	 *
 	 * @param   args  Data to be logged.
 	 */
-	public info(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public info: LogMethod;
 
 	/**
 	 * Warning logging method.
 	 *
 	 * @param   args  Data to be logged.
 	 */
-	public warn(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public warn: LogMethod;
 
 	/**
 	 * Error logging method.
 	 *
 	 * @param   args  Data to be logged.
 	 */
-	public error(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public error: LogMethod;
 
 	/**
 	 * Critical logging method. Same as '.error()'.
@@ -308,11 +295,7 @@ export class Logger implements LoggerMethods {
 	 * @deprecated Use .error() logging method istead.
 	 * @param   args  Data to be logged.
 	 */
-	public critical(...args: unknown[]): void {
-		// Must be overriden when the logger is
-		// configured with a given log level.
-		// By default it is disabled.
-	}
+	public critical: LogMethod;
 }
 
 /**
