@@ -1,4 +1,5 @@
 export const LogLevels = {
+	quiet: -1,
 	critical: 0 /** @deprecated */,
 	error: 1,
 	warn: 2,

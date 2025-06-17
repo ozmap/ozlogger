@@ -6,7 +6,7 @@ export type LogMethod = ((...args: unknown[]) => void) & {
 };
 
 export interface LoggerMethods
-	extends Record<keyof typeof LogLevels, LogMethod> {
+	extends Record<keyof Omit<typeof LogLevels, 'quiet'>, LogMethod> {
 	time(id: string): Logger;
 	timeEnd(id: string): Logger;
 	tag(...tags: string[]): Logger /** @deprecated */;

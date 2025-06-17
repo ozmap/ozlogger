@@ -7,7 +7,7 @@ import { LogLevels } from './util/enum/LogLevels';
 import { setupLogServer } from './http/server';
 import { Server } from 'http';
 import { level, output, host } from './util/Helpers';
-import { LevelTags } from './util/enum/LevelTags';
+import { LevelTag } from './util/enum/LevelTags';
 
 /**
  * Logger module class.
@@ -96,10 +96,7 @@ export class Logger implements LoggerMethods {
 	 * @param   name     Log level name.
 	 * @returns The logging function.
 	 */
-	private toggle(
-		enabled: boolean,
-		name: (typeof LevelTags)[number]
-	): LogMethod {
+	private toggle(enabled: boolean, name: LevelTag): LogMethod {
 		const fn = !enabled
 			? (..._: unknown[]): void => {}
 			: (...args: unknown[]): void => {
