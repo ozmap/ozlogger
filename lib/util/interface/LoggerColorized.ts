@@ -1,4 +1,4 @@
-import { LevelTags } from '../enum/LevelTags';
+import { LevelTag } from '../enum/LevelTags';
 
 export interface LoggerColorized
-	extends Record<(typeof LevelTags)[number], (text: string) => string> {}
+	extends Record<LevelTag, (text: string) => string> {}

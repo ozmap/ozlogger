@@ -1,6 +1,3 @@
-import { LevelTags } from '../enum/LevelTags';
+import { LevelTag } from '../enum/LevelTags';
 
-export type LogWrapper = (
-	level: (typeof LevelTags)[number],
-	...args: unknown[]
-) => Promise<void>;
+export type LogWrapper = (level: LevelTag, ...args: unknown[]) => Promise<void>;

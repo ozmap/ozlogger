@@ -2,8 +2,9 @@ import { expect, test } from '@jest/globals';
 import createLogger, { Logger } from '../lib';
 
 const logger: Logger = createLogger('perf', {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	log: (msg: string) => {}
+	client: {
+		log(_: string) {}
+	}
 });
 
 describe('OZLogger performance test suite.', () => {
