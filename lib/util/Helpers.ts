@@ -21,6 +21,51 @@ export function stringify(data: unknown): string {
 }
 
 /**
+ * Creates a replacer function for JSON.stringify to handle circular references.
+ * This version tracks parent objects (ancestors) to detect cycles.
+ * When a circular reference is detected, it returns the string "[Circular]" for that property.
+ *
+ * @returns A replacer function that handles circular objects by returning "[Circular]".
+ */
+export function getCircularReplacer(): (
+	this: unknown,
+	key: string,
+	value: unknown
+) => unknown {
+	const ancestors: Array<unknown> = [];
+
+	/**
+	 * The replacer function to be used with JSON.stringify.
+	 * It checks for circular references by comparing the current value against its ancestors.
+	 *
+	 * @param   key    The key of the property being stringified.
+	 * @param   value  The value of the property being stringified.
+	 * @returns The original value if it's not part of a circular reference,
+	 *          or the string "[Circular]" if a circular reference is detected.
+	 */
+	return function (this: unknown, key: string, value: unknown): unknown {
+		if (typeof value !== 'object' || value === null) {
+			return value;
+		}
+
+		while (
+			ancestors.length > 0 &&
+			ancestors[ancestors.length - 1] !== this
+		) {
+			ancestors.pop();
+		}
+
+		if (ancestors.includes(value)) {
+			return '[Circular]';
+		}
+
+		ancestors.push(value);
+
+		return value;
+	};
+}
+
+/**
  * Outputs the normalized version of the input data.
  *
  * @param   data  The data to normalize.

@@ -1,5 +1,10 @@
-import { colorized, datetime, normalize } from '../util/Helpers';
-import { LevelTags } from '../util/enum/LevelTags';
+import {
+	colorized,
+	datetime,
+	getCircularReplacer,
+	normalize
+} from '../util/Helpers';
+import { LevelTag } from '../util/enum/LevelTags';
 import { AbstractLogger } from '../util/type/AbstractLogger';
 import { LogWrapper } from '../util/type/LogWrapper';
 
@@ -14,15 +19,31 @@ export function json(logger: AbstractLogger, tag?: string): LogWrapper {
 	const now = datetime<{ datetime?: string }>();
 	const paint = colorized();
 
-	return async (level: (typeof LevelTags)[number], ...args: unknown[]) => {
+	return async (level: LevelTag, ...args: unknown[]) => {
 		const data: Record<number, unknown> = {};
 
 		for (let i = 0; i < args.length; ++i) {
 			data[i] = normalize(args[i]);
 		}
 
-		logger.log(
-			paint[level](JSON.stringify({ ...now(), level, tag, data }))
-		);
+		try {
+			logger.log(
+				paint[level](
+					JSON.stringify(
+						{ ...now(), level, tag, data },
+						getCircularReplacer()
+					)
+				)
+			);
+		} catch (e) {
+			logger.log(
+				JSON.stringify({
+					...now(),
+					level,
+					tag,
+					data: '[OZLogger internal] - Unable to serialize log data'
+				})
+			);
+		}
 	};
 }
