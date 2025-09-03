@@ -6,6 +6,7 @@
 	"scripts": {
 		"build": "tsc",
 		"build:watch": "tsc -w",
+		"build:package": "npm run build; [ -r ozmap-logger-*.*.*.tgz ] && rm -f ozmap-logger-*.*.*.tgz; npm pack",
 		"docs": "jsdoc -c .jsdocrc dist/lib",
 		"test": "jest --detectOpenHandles",
 		"test:watch": "jest --watchAll --detectOpenHandles",
