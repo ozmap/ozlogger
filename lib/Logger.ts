@@ -211,7 +211,7 @@ export class Logger implements LoggerMethods {
 	 * @returns Logger instance.
 	 */
 	public timeEnd(id: string): Logger {
-		this.logger('INFO', `${id}: ${this.getTime(id)} ms`);
+		this.info(`${id}: ${this.getTime(id)} ms`);
 
 		return this;
 	}
