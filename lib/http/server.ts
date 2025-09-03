@@ -29,11 +29,17 @@ export function setupLogServer(
 
 	process.env.OZLOGGER_HTTP = 'false';
 
-	return http
-		.createServer(handleRequest(logger))
-		.listen(port, address, () => {
-			logger.info(`Log server started listening at ${address}:${port}`);
-		});
+	try {
+		return http
+			.createServer(handleRequest(logger))
+			.listen(port, address, () => {
+				logger.info(
+					`Log server started listening at ${address}:${port}`
+				);
+			});
+	} catch (e) {
+		logger.error(`Log server failed to start at ${address}:${port}`);
+	}
 }
 
 /**
