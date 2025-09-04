@@ -33,6 +33,9 @@ export function setupLogServer<TScope extends Logger>(
 			.createServer(handleRequest.call(this))
 			.listen(port, address, () => {
 				this.info(`Log server started listening at ${address}:${port}`);
+			})
+			.on('error', (e) => {
+				this.error(`Log server at ${address}:${port} got an error`, e);
 			});
 	} catch (e) {
 		this.error(`Log server failed to start at ${address}:${port}`);
