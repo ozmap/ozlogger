@@ -28,11 +28,15 @@ export function setupLogServer<TScope extends Logger>(
 
 	process.env.OZLOGGER_HTTP = 'false';
 
-	return http
-		.createServer(handleRequest.call(this))
-		.listen(port, address, () => {
-			this.info(`Log server started listening at ${address}:${port}`);
-		});
+	try {
+		return http
+			.createServer(handleRequest.call(this))
+			.listen(port, address, () => {
+				this.info(`Log server started listening at ${address}:${port}`);
+			});
+	} catch (e) {
+		this.error(`Log server failed to start at ${address}:${port}`);
+	}
 }
 
 /**
