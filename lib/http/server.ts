@@ -36,6 +36,12 @@ export function setupLogServer(
 				logger.info(
 					`Log server started listening at ${address}:${port}`
 				);
+			})
+			.on('error', (e) => {
+				logger.error(
+					`Log server at ${address}:${port} got an error`,
+					e
+				);
 			});
 	} catch (e) {
 		logger.error(`Log server failed to start at ${address}:${port}`);
