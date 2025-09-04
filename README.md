@@ -7,8 +7,8 @@ DevOZ logger module.
 The available logging methods are presented in hierarchy level order.
 
  - `.debug(...messages: any[])`
- - `.audit(...messages: any[])`
  - `.info(...messages: any[])`
+ - `.audit(...messages: any[])`
  - `.warn(...messages: any[])`
  - `.error(...messages: any[])`
 
