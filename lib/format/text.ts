@@ -1,7 +1,8 @@
+import { Logger } from '../Logger';
+import { LogWrapper } from '../util/type/LogWrapper';
+import { AbstractLogger } from '../util/type/AbstractLogger';
 import { colorized, datetime, stringify } from '../util/Helpers';
 import { LevelTag } from '../util/enum/LevelTags';
-import { AbstractLogger } from '../util/type/AbstractLogger';
-import { LogWrapper } from '../util/type/LogWrapper';
 
 /**
  * Formatting method for text output.
@@ -10,7 +11,11 @@ import { LogWrapper } from '../util/type/LogWrapper';
  * @param   tag     Tag to mark logged output.
  * @returns The logging method.
  */
-export function text(logger: AbstractLogger, tag?: string): LogWrapper {
+export function text<TScope extends Logger>(
+	this: TScope,
+	logger: AbstractLogger,
+	tag?: string
+): LogWrapper {
 	const now = datetime<string>();
 	const paint = colorized();
 
