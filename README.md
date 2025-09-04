@@ -3,6 +3,38 @@ DevOZ logger module.
 
 ----
 
+## ⚠️  Deprecation Notice
+
+#### Deprecated logger methods:
+
+The following methods have been deprecated since version `0.2.x` and will be removed completely starting from version `0.3.x`:
+
+ - `Logger.init(opts?: { tag?: string; client?: AbstractLogger }): Logger` is deprecated, please use `createLogger(tag?: string, opts?: { client?: AbstractLogger; noServer?: boolean }): Logger` instead.
+ - `.tag(...tags: string[]): Logger` used to add tags to log messages, removed in favor of using dedicated tagged loggers.
+ - `.silly(...messages: unknown[]): void` used for very verbose logging, removed in favor of using `.debug(...messages: unknown[]): void`.
+ - `.http(...messages: unknown[]): void` used for HTTP related logs, removed in favor of using `.info(...messages: unknown[]): void`.
+ - `.critical(...messages: unknown[]): void` used for critical error logs, removed in favor of using `.error(...messages: unknown[]): void`.
+
+#### Deprecated log levels:
+
+The following log levels have been deprecated since version `0.2.x` and will be removed completely starting from version `0.3.x`:
+
+ - `SILLY` level, please use `DEBUG` level instead.
+ - `HTTP` level, please use `INFO` level instead.
+ - `CRITICAL` level, please use `ERROR` level instead.
+
+#### Deprecated structured JSON output fields:
+
+The following structured JSON output fields have been deprecated since version `0.2.x` and will be removed completely starting from version `0.3.x`:
+
+ - `data` field, please use `body` field instead.
+ - `level` field, please use `severityText` field instead.
+
+
+Please migrate to the recommended alternatives to avoid breaking changes when upgrading to `0.3.x`.
+
+----
+
 ## Available log methods
 The available logging methods are presented in hierarchy level order.
 
