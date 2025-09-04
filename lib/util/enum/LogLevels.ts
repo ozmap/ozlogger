@@ -1,11 +1,15 @@
+/**
+ * Logging levels with their associated severity
+ * numbers according to OpenTelemetry data model.
+ */
 export const LogLevels = {
-	quiet: -1,
-	critical: 0 /** @deprecated */,
-	error: 1,
-	warn: 2,
-	info: 3,
-	http: 4 /** @deprecated */,
-	audit: 5,
-	debug: 6,
-	silly: 7 /** @deprecated */
+	quiet: Infinity,
+	critical: 21 /** @deprecated */,
+	error: 17,
+	warn: 13,
+	audit: 12,
+	info: 9,
+	http: 8 /** @deprecated */,
+	debug: 5,
+	silly: 1 /** @deprecated */
 } as const;
