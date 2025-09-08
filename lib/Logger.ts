@@ -1,13 +1,15 @@
-import { getLogWrapper } from './format';
-import { LogMethod, LoggerMethods } from './util/interface/LoggerMethods';
 import { LogWrapper } from './util/type/LogWrapper';
 import { AbstractLogger } from './util/type/AbstractLogger';
-import { registerEvent } from './util/Events';
+import { LogMethod, LoggerMethods } from './util/interface/LoggerMethods';
+import { LogContext } from './util/interface/LogContext';
 import { LogLevels } from './util/enum/LogLevels';
-import { setupLogServer } from './http/server';
-import { Server } from 'http';
-import { level, output, host } from './util/Helpers';
 import { LevelTag } from './util/enum/LevelTags';
+import { Server } from 'http';
+import { getLogWrapper } from './format';
+import { registerEvent } from './util/Events';
+import { setupLogServer } from './http/server';
+import { level, output, host } from './util/Helpers';
+import { context, trace } from '@opentelemetry/api';
 
 /**
  * Logger module class.
@@ -34,6 +36,11 @@ export class Logger implements LoggerMethods {
 	public server: Server | void;
 
 	/**
+	 * Stores the logger's contextual information.
+	 */
+	private context: LogContext;
+
+	/**
 	 * Logger module class constructor.
 	 *
 	 * @param   opts           Logger module configuration options.
@@ -44,10 +51,15 @@ export class Logger implements LoggerMethods {
 	public constructor(
 		opts: { tag?: string; client?: AbstractLogger; noServer?: boolean } = {}
 	) {
-		this.logger = getLogWrapper(output(), opts.client ?? console, opts.tag);
+		this.logger = getLogWrapper.call(
+			this,
+			output(),
+			opts.client ?? console,
+			opts.tag
+		);
 		this.configure(level());
 
-		if (!opts.noServer) this.server = setupLogServer(...host(), this);
+		if (!opts.noServer) this.server = setupLogServer.apply(this, host());
 
 		registerEvent(
 			this,
@@ -146,14 +158,14 @@ export class Logger implements LoggerMethods {
 
 		const lvl = LogLevels[level];
 
-		this.silly = this.toggle(LogLevels['silly'] <= lvl, 'SILLY');
-		this.debug = this.toggle(LogLevels['debug'] <= lvl, 'DEBUG');
-		this.audit = this.toggle(LogLevels['audit'] <= lvl, 'AUDIT');
-		this.http = this.toggle(LogLevels['http'] <= lvl, 'HTTP');
-		this.info = this.toggle(LogLevels['info'] <= lvl, 'INFO');
-		this.warn = this.toggle(LogLevels['warn'] <= lvl, 'WARNING');
-		this.error = this.toggle(LogLevels['error'] <= lvl, 'ERROR');
-		this.critical = this.toggle(LogLevels['critical'] <= lvl, 'CRITICAL');
+		this.critical = this.toggle(LogLevels['critical'] >= lvl, 'CRITICAL');
+		this.error = this.toggle(LogLevels['error'] >= lvl, 'ERROR');
+		this.warn = this.toggle(LogLevels['warn'] >= lvl, 'WARNING');
+		this.audit = this.toggle(LogLevels['audit'] >= lvl, 'AUDIT');
+		this.info = this.toggle(LogLevels['info'] >= lvl, 'INFO');
+		this.http = this.toggle(LogLevels['http'] >= lvl, 'HTTP');
+		this.debug = this.toggle(LogLevels['debug'] >= lvl, 'DEBUG');
+		this.silly = this.toggle(LogLevels['silly'] >= lvl, 'SILLY');
 
 		return level;
 	}
@@ -211,9 +223,40 @@ export class Logger implements LoggerMethods {
 	 * @returns Logger instance.
 	 */
 	public timeEnd(id: string): Logger {
-		this.logger('INFO', `${id}: ${this.getTime(id)} ms`);
+		this.info(`${id}: ${this.getTime(id)} ms`);
 
 		return this;
+	}
+
+	/**
+	 * Method for adding logger's contextual information.
+	 *
+	 * @param   ctx  Contextual information to be added.
+	 * @returns Logger instance.
+	 */
+	public withContext(ctx: LogContext): Logger {
+		this.context = { ...this.context, ...ctx };
+		return this;
+	}
+
+	/**
+	 * Method for retrieving the logger's current contextual information.
+	 *
+	 * @returns The current log context.
+	 */
+	public getContext(): LogContext {
+		const ctx = { ...this.context };
+		const span = trace.getSpan(context.active())?.spanContext();
+
+		if (!ctx.traceId && span?.traceId) {
+			ctx.traceId = span.traceId;
+		}
+
+		if (!ctx.spanId && span?.spanId) {
+			ctx.spanId = span.spanId;
+		}
+
+		return ctx;
 	}
 
 	/**
