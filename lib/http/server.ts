@@ -15,13 +15,12 @@ import routes from './routes';
  *
  * @param   port     The interface port for the server to listen on.
  * @param   address  The interface address for the server to listen on.
- * @param   logger   The logger instance.
  * @returns The HTTP server that was setup.
  */
-export function setupLogServer(
+export function setupLogServer<TScope extends Logger>(
+	this: TScope,
 	port: number,
-	address: string,
-	logger: Logger
+	address: string
 ): Server | void {
 	if (cluster.isWorker) return;
 
@@ -31,31 +30,25 @@ export function setupLogServer(
 
 	try {
 		return http
-			.createServer(handleRequest(logger))
+			.createServer(handleRequest.call(this))
 			.listen(port, address, () => {
-				logger.info(
-					`Log server started listening at ${address}:${port}`
-				);
+				this.info(`Log server started listening at ${address}:${port}`);
 			})
 			.on('error', (e) => {
-				logger.error(
-					`Log server at ${address}:${port} got an error`,
-					e
-				);
+				this.error(`Log server at ${address}:${port} got an error`, e);
 			});
 	} catch (e) {
-		logger.error(`Log server failed to start at ${address}:${port}`);
+		this.error(`Log server failed to start at ${address}:${port}`);
 	}
 }
 
 /**
  * Closure for handling incoming HTTP requests.
  *
- * @param   logger  The logger client.
  * @returns The HTTP request handler.
  */
-function handleRequest(
-	logger: Logger
+function handleRequest<TScope extends Logger>(
+	this: TScope
 ): (req: IncomingMessage, res: ServerResponse) => Promise<ServerResponse> {
 	return async (req, res) => {
 		const reqIsJson = isContentTypeJson(req.headers);
@@ -69,7 +62,7 @@ function handleRequest(
 			} catch (e) {
 				if (e instanceof HttpError) return e.respond(res, resIsJson);
 
-				logger.error(e);
+				this.error(e);
 
 				return new HttpError(
 					`Something went wrong while processing your request content.`,
@@ -81,7 +74,7 @@ function handleRequest(
 		return router(req as ProcessedRequest, res).catch((e) => {
 			if (e instanceof HttpError) return e.respond(res, resIsJson);
 
-			logger.error(e);
+			this.error(e);
 
 			return new HttpError(
 				`Something went wrong while handling your request.`,
