@@ -251,3 +251,17 @@ export function host(): [number, string] {
 
 	throw new Error(`Unsupported HTTP server address (${input})`);
 }
+
+/**
+ * Retrieve the current process information.
+ *
+ * @returns The current process and its parent IDs.
+ */
+export function getProcessInformation(): { pid?: number; ppid?: number } {
+	if (typeof process === 'undefined') return {};
+
+	return {
+		pid: process.pid,
+		ppid: process.ppid
+	};
+}

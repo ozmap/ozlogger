@@ -8,7 +8,7 @@ import { Server } from 'http';
 import { getLogWrapper } from './format';
 import { registerEvent } from './util/Events';
 import { setupLogServer } from './http/server';
-import { level, output, host } from './util/Helpers';
+import { level, output, host, getProcessInformation } from './util/Helpers';
 import { context, trace } from '@opentelemetry/api';
 
 /**
@@ -245,7 +245,10 @@ export class Logger implements LoggerMethods {
 	 * @returns The current log context.
 	 */
 	public getContext(): LogContext {
-		const ctx = { ...this.context };
+		const ctx = {
+			...this.context,
+			...getProcessInformation()
+		};
 		const span = trace.getSpan(context.active())?.spanContext();
 
 		if (!ctx.traceId && span?.traceId) {
