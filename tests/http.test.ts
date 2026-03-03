@@ -540,15 +540,19 @@ describe('HTTP Server Errors', () => {
 	test('should handle EADDRINUSE gracefully', async () => {
 		process.env.OZLOGGER_SERVER = '9883';
 
-		// Start a blocking server
+		// Start a blocking server on SAME host/port
 		const blockingServer = http.createServer();
 		await new Promise<void>((resolve) =>
-			blockingServer.listen(9883, resolve)
+			// Explicitly bind to 'localhost' to conflict with logger default
+			blockingServer.listen(9883, 'localhost', () => resolve())
 		);
 
-		// Try to start logger on same port
+		// Try to start logger on same port (defaults to localhost)
+		// We need to use createLogger to trigger the server setup
 		const logger = createLogger('CONFLICT-TEST');
-		await new Promise((r) => setTimeout(r, 500)); // Wait for error to happen
+
+		// Wait for the server to ATTEMPT to start and FAIL
+		await new Promise((r) => setTimeout(r, 1000));
 
 		expect(getServerInstance()).toBeNull();
 		expect(getServerPort()).toBeNull();
