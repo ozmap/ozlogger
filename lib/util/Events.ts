@@ -8,16 +8,19 @@ import cluster from 'cluster';
  * @param   context  The context object being bound to the event handler.
  * @param   event    The event name being registered.
  * @param   handler  The event handler function.
+ * @returns The message handler function for later removal.
  */
 export function registerEvent(
 	context: Logger,
 	event: string,
 	handler: EventHandler
-): void {
-	process.on('message', (data: EventData) => {
+): (data: EventData) => void {
+	const messageHandler = (data: EventData) => {
 		if ('event' in data && data.event === event)
 			handler.bind(context)(data);
-	});
+	};
+	process.on('message', messageHandler);
+	return messageHandler;
 }
 
 /**

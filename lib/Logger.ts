@@ -1,5 +1,6 @@
 import { LogWrapper } from './util/type/LogWrapper';
 import { AbstractLogger } from './util/type/AbstractLogger';
+import { EventData } from './util/type/Event';
 import { LogMethod, LoggerMethods } from './util/interface/LoggerMethods';
 import { LogContext } from './util/interface/LogContext';
 import { LogLevels } from './util/enum/LogLevels';
@@ -41,15 +42,26 @@ export class Logger implements LoggerMethods {
 	private context: LogContext;
 
 	/**
+	 * Stores the message handler reference for cleanup.
+	 */
+	private messageHandler: ((data: EventData) => void) | null = null;
+
+	/**
 	 * Logger module class constructor.
 	 *
-	 * @param   opts           Logger module configuration options.
-	 * @param   opts.tag       Tag with which the logger is being created.
-	 * @param   opts.client    Underlying abstract logger to override console.
-	 * @param   opts.noServer  Disable the embedded http server for runtime actions.
+	 * @param   opts             Logger module configuration options.
+	 * @param   opts.tag         Tag with which the logger is being created.
+	 * @param   opts.client      Underlying abstract logger to override console.
+	 * @param   opts.noServer    Disable the embedded http server for runtime actions.
+	 * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
 	 */
 	public constructor(
-		opts: { tag?: string; client?: AbstractLogger; noServer?: boolean } = {}
+		opts: {
+			tag?: string;
+			client?: AbstractLogger;
+			noServer?: boolean;
+			allowExit?: boolean;
+		} = {}
 	) {
 		this.logger = getLogWrapper.call(
 			this,
@@ -59,9 +71,17 @@ export class Logger implements LoggerMethods {
 		);
 		this.configure(level());
 
-		if (!opts.noServer) this.server = setupLogServer.apply(this, host());
+		if (!opts.noServer) {
+			const [port, address] = host();
+			this.server = setupLogServer.call(
+				this,
+				port,
+				address,
+				opts.allowExit
+			);
+		}
 
-		registerEvent(
+		this.messageHandler = registerEvent(
 			this,
 			'ozlogger.http.changeLevel',
 			(data: {
@@ -90,6 +110,13 @@ export class Logger implements LoggerMethods {
 		return new Promise<void>((resolve, reject) => {
 			this.timeouts.forEach((id) => clearTimeout(id));
 			this.timeouts.clear();
+			this.timers.clear();
+
+			// Remove message handler to allow process exit
+			if (this.messageHandler) {
+				process.removeListener('message', this.messageHandler);
+				this.messageHandler = null;
+			}
 
 			if (!this.server) return resolve();
 
@@ -347,14 +374,19 @@ export class Logger implements LoggerMethods {
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag            Tag with which the logger is being created.
- * @param   opts.client    Underlying abstract logger to override console.
- * @param   opts.noServer  Disable the embedded http server for runtime actions.
+ * @param   tag              Tag with which the logger is being created.
+ * @param   opts.client      Underlying abstract logger to override console.
+ * @param   opts.noServer    Disable the embedded http server for runtime actions.
+ * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
  * @returns Logger instace
  */
 export function createLogger(
 	tag?: string,
-	opts: { client?: AbstractLogger; noServer?: boolean } = {}
+	opts: {
+		client?: AbstractLogger;
+		noServer?: boolean;
+		allowExit?: boolean;
+	} = {}
 ) {
 	return new Logger({ tag, ...opts });
 }

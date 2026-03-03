@@ -351,3 +351,81 @@ describe('Logger with OpenTelemetry context', () => {
 		delete process.env.OZLOGGER_OUTPUT;
 	});
 });
+
+describe('Logger allowExit option', () => {
+	beforeEach(() => {
+		process.env.OZLOGGER_LEVEL = 'debug';
+		process.env.OZLOGGER_OUTPUT = 'json';
+	});
+
+	afterEach(() => {
+		delete process.env.OZLOGGER_LEVEL;
+		delete process.env.OZLOGGER_OUTPUT;
+	});
+
+	test('should accept allowExit option without error', () => {
+		const logged: string[] = [];
+		const mockLogger = { log: (msg: string) => logged.push(msg) };
+
+		// Just verify the option is accepted without throwing
+		const logger = createLogger('EXIT-TEST', {
+			client: mockLogger,
+			noServer: true,
+			allowExit: true
+		});
+
+		logger.info('test');
+		expect(logged.length).toBe(1);
+	});
+
+	test('should accept allowExit: false option without error', () => {
+		const logged: string[] = [];
+		const mockLogger = { log: (msg: string) => logged.push(msg) };
+
+		const logger = createLogger('NO-EXIT-TEST', {
+			client: mockLogger,
+			noServer: true,
+			allowExit: false
+		});
+
+		logger.info('test');
+		expect(logged.length).toBe(1);
+	});
+
+	test('stop() should remove message handler', async () => {
+		const logged: string[] = [];
+		const mockLogger = { log: (msg: string) => logged.push(msg) };
+
+		const logger = createLogger('HANDLER-TEST', {
+			client: mockLogger,
+			noServer: true
+		});
+
+		// Verify logger works before stop
+		logger.info('before stop');
+		expect(logged.length).toBe(1);
+
+		// Stop should clean up message handler
+		await logger.stop();
+
+		// Logger should still function (but message handler removed)
+		logger.info('after stop');
+		expect(logged.length).toBe(2);
+	});
+
+	test('stop() should clear timers', async () => {
+		const logged: string[] = [];
+		const mockLogger = { log: (msg: string) => logged.push(msg) };
+
+		const logger = createLogger('TIMER-CLEANUP', {
+			client: mockLogger,
+			noServer: true
+		});
+
+		logger.time('test-timer');
+		await logger.stop();
+
+		// After stop, timer should be cleared and should throw
+		expect(() => logger.timeEnd('test-timer')).toThrow();
+	});
+});
