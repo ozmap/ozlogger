@@ -504,3 +504,56 @@ describe('HTTP Server Port Functions', () => {
 		expect(getServerPort()).toBeNull();
 	});
 });
+
+describe('HTTP Server Errors', () => {
+	beforeEach(() => {
+		resetServerState();
+	});
+
+	afterEach(async () => {
+		const server = getServerInstance();
+		if (server) {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+		delete process.env.OZLOGGER_SERVER;
+	});
+
+	test('should handle generic server errors', async () => {
+		process.env.OZLOGGER_SERVER = '9880';
+
+		const logger = createLogger('ERROR-TEST');
+		await new Promise((r) => setTimeout(r, 200));
+
+		const server = getServerInstance();
+		expect(server).toBeDefined();
+
+		// Emulate generic error
+		server!.emit('error', new Error('Generic error'));
+
+		// Should log error (verified by coverage)
+
+		await logger.stop();
+	});
+
+	test('should handle EADDRINUSE gracefully', async () => {
+		process.env.OZLOGGER_SERVER = '9883';
+
+		// Start a blocking server
+		const blockingServer = http.createServer();
+		await new Promise<void>((resolve) =>
+			blockingServer.listen(9883, resolve)
+		);
+
+		// Try to start logger on same port
+		const logger = createLogger('CONFLICT-TEST');
+		await new Promise((r) => setTimeout(r, 500)); // Wait for error to happen
+
+		expect(getServerInstance()).toBeNull();
+		expect(getServerPort()).toBeNull();
+
+		await logger.stop();
+		blockingServer.close();
+	});
+});

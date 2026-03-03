@@ -216,7 +216,11 @@ export class Logger implements LoggerMethods {
 					this.logger(name, ...args);
 				};
 		const timeEnd = !enabled
-			? (_: string) => this
+			? (id: string) => {
+					// We must cleanup the timer even if we don't log
+					if (this.timers.has(id)) this.timers.delete(id);
+					return this;
+				}
 			: (id: string) => {
 					this.logger(name, `${id}: ${this.getTime(id)} ms`);
 					return this;
