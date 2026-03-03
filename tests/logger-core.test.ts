@@ -429,3 +429,189 @@ describe('Logger allowExit option', () => {
 		expect(() => logger.timeEnd('test-timer')).toThrow();
 	});
 });
+
+describe('Timer Memory Leak Prevention (Task #41)', () => {
+	let logger: Logger;
+	let logged: string[] = [];
+	const mockLogger = { log: (msg: string) => logged.push(msg) };
+
+	beforeEach(() => {
+		logged = [];
+		process.env.OZLOGGER_LEVEL = 'debug';
+		process.env.OZLOGGER_OUTPUT = 'json';
+	});
+
+	afterEach(async () => {
+		delete process.env.OZLOGGER_LEVEL;
+		delete process.env.OZLOGGER_OUTPUT;
+		if (logger) {
+			await logger.stop();
+		}
+	});
+
+	test('should support timerTTL configuration option', () => {
+		logger = createLogger('TTL-CONFIG', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 5000
+		});
+
+		// Should not throw
+		expect(logger).toBeInstanceOf(Logger);
+	});
+
+	test('should disable timer GC when timerTTL is 0', () => {
+		logger = createLogger('TTL-DISABLED', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 0
+		});
+
+		// Timer should work normally
+		logger.time('no-gc-timer');
+		logger.timeEnd('no-gc-timer');
+		expect(logged.length).toBe(1);
+	});
+
+	test('should cleanup expired timers and log warning', async () => {
+		// Use very short TTL for testing
+		logger = createLogger('TTL-CLEANUP', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 50 // 50ms TTL
+		});
+
+		// Start a timer but don't end it
+		logger.time('orphan-timer');
+
+		// Access private method to force cleanup (simulating GC interval)
+		// @ts-expect-error accessing private method for testing
+		logger.cleanupExpiredTimers();
+
+		// Timer is still valid (not expired yet)
+		expect(logged.length).toBe(0);
+
+		// Wait for timer to expire
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		// Now force cleanup
+		// @ts-expect-error accessing private method for testing
+		logger.cleanupExpiredTimers();
+
+		// Should have logged a warning
+		expect(logged.length).toBe(1);
+		const output = JSON.parse(logged[0]);
+		expect(output.severityText).toBe('WARNING');
+		expect(output.body['0']).toContain('orphan-timer');
+		expect(output.body['0']).toContain('expired');
+
+		// Timer should now be cleaned up - calling timeEnd should throw
+		expect(() => logger.timeEnd('orphan-timer')).toThrow(
+			'Undefined identifier orphan-timer'
+		);
+	});
+
+	test('should not affect timers within TTL', async () => {
+		logger = createLogger('TTL-VALID', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 5000 // 5 second TTL
+		});
+
+		logger.time('valid-timer');
+
+		// Force cleanup
+		// @ts-expect-error accessing private method for testing
+		logger.cleanupExpiredTimers();
+
+		// Timer should still be valid
+		expect(logged.length).toBe(0);
+		logger.timeEnd('valid-timer');
+		expect(logged.length).toBe(1);
+	});
+
+	test('should cleanup multiple expired timers', async () => {
+		logger = createLogger('TTL-MULTI', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 50
+		});
+
+		// Start multiple timers
+		logger.time('orphan-1');
+		logger.time('orphan-2');
+		logger.time('orphan-3');
+
+		// Wait for expiration
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		// Force cleanup
+		// @ts-expect-error accessing private method for testing
+		logger.cleanupExpiredTimers();
+
+		// Should have 3 warnings
+		expect(logged.length).toBe(3);
+		expect(logged[0]).toContain('orphan-1');
+		expect(logged[1]).toContain('orphan-2');
+		expect(logged[2]).toContain('orphan-3');
+	});
+
+	test('stop() should clear timer GC interval', async () => {
+		logger = createLogger('TTL-STOP', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 1000
+		});
+
+		// Stop should clean up without errors
+		await logger.stop();
+
+		// Create a new logger to ensure no leaks
+		logger = createLogger('TTL-STOP-2', {
+			client: mockLogger,
+			noServer: true,
+			timerTTL: 1000
+		});
+		await logger.stop();
+	});
+
+	test('should use default TTL of 10 minutes when not specified', () => {
+		logger = createLogger('TTL-DEFAULT', {
+			client: mockLogger,
+			noServer: true
+		});
+
+		// Logger should work - default TTL applied internally
+		logger.time('default-ttl');
+		logger.timeEnd('default-ttl');
+		expect(logged.length).toBe(1);
+	});
+
+	test('timer GC interval should execute cleanup automatically', async () => {
+		// Use fake timers to control setInterval
+		jest.useFakeTimers();
+
+		const localLogged: string[] = [];
+		const localMockLogger = { log: (msg: string) => localLogged.push(msg) };
+
+		const localLogger = createLogger('TTL-AUTO-GC', {
+			client: localMockLogger,
+			noServer: true,
+			timerTTL: 10 // 10ms TTL
+		});
+
+		// Start timer and don't end it
+		localLogger.time('auto-gc-timer');
+
+		// Advance time past TTL + cleanup interval (60s)
+		jest.advanceTimersByTime(70000); // 70 seconds
+
+		// Should have warning logged by the interval
+		expect(localLogged.length).toBe(1);
+		expect(localLogged[0]).toContain('auto-gc-timer');
+
+		// Cleanup
+		await localLogger.stop();
+		jest.useRealTimers();
+	});
+});

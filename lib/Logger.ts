@@ -12,6 +12,16 @@ import { level, output, host, getProcessInformation } from './util/Helpers';
 import { context, trace } from '@opentelemetry/api';
 
 /**
+ * Default timer TTL in milliseconds (10 minutes).
+ */
+const DEFAULT_TIMER_TTL = 600000;
+
+/**
+ * Default timer cleanup interval in milliseconds (1 minute).
+ */
+const DEFAULT_TIMER_GC_INTERVAL = 60000;
+
+/**
  * Logger module class.
  */
 export class Logger implements LoggerMethods {
@@ -24,6 +34,16 @@ export class Logger implements LoggerMethods {
 	 * Temporary storage for timeouts.
 	 */
 	private timeouts = new Map<string, NodeJS.Timeout>();
+
+	/**
+	 * Timer garbage collector interval reference.
+	 */
+	private timerGc: NodeJS.Timeout | null = null;
+
+	/**
+	 * TTL for timers in milliseconds.
+	 */
+	private timerTTL: number;
 
 	/**
 	 * Stores the logger wrapper being used.
@@ -53,6 +73,7 @@ export class Logger implements LoggerMethods {
 	 * @param   opts.client      Underlying abstract logger to override console.
 	 * @param   opts.noServer    Disable the embedded http server for runtime actions.
 	 * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
+	 * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
 	 */
 	public constructor(
 		opts: {
@@ -60,6 +81,7 @@ export class Logger implements LoggerMethods {
 			client?: AbstractLogger;
 			noServer?: boolean;
 			allowExit?: boolean;
+			timerTTL?: number;
 		} = {}
 	) {
 		this.logger = getLogWrapper.call(
@@ -100,6 +122,16 @@ export class Logger implements LoggerMethods {
 				);
 			}
 		);
+
+		// Setup timer garbage collection
+		this.timerTTL = opts.timerTTL ?? DEFAULT_TIMER_TTL;
+		if (this.timerTTL > 0) {
+			this.timerGc = setInterval(
+				() => this.cleanupExpiredTimers(),
+				DEFAULT_TIMER_GC_INTERVAL
+			);
+			this.timerGc.unref(); // Don't block process exit
+		}
 	}
 
 	/**
@@ -110,6 +142,12 @@ export class Logger implements LoggerMethods {
 			this.timeouts.forEach((id) => clearTimeout(id));
 			this.timeouts.clear();
 			this.timers.clear();
+
+			// Clear timer garbage collector
+			if (this.timerGc) {
+				clearInterval(this.timerGc);
+				this.timerGc = null;
+			}
 
 			// Unregister handler to avoid accumulating listeners/references
 			if (this.unregisterChangeLevelHandler) {
@@ -250,6 +288,28 @@ export class Logger implements LoggerMethods {
 	}
 
 	/**
+	 * Method for cleaning up expired timers to prevent memory leaks.
+	 * Timers that exceed the TTL are removed and a warning is logged.
+	 */
+	private cleanupExpiredTimers(): void {
+		const now = Date.now();
+		const expired: string[] = [];
+
+		for (const [id, startTime] of this.timers) {
+			if (now - startTime > this.timerTTL) {
+				expired.push(id);
+			}
+		}
+
+		for (const id of expired) {
+			this.timers.delete(id);
+			this.warn(
+				`Timer '${id}' expired after ${this.timerTTL}ms without timeEnd() call - cleaned up to prevent memory leak`
+			);
+		}
+	}
+
+	/**
 	 * Method for retrieving tracked execution time.
 	 *
 	 * @param   id  Timer identifier tag.
@@ -384,6 +444,7 @@ export class Logger implements LoggerMethods {
  * @param   opts.client      Underlying abstract logger to override console.
  * @param   opts.noServer    Disable the embedded http server for runtime actions.
  * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
+ * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
  * @returns Logger instace
  */
 export function createLogger(
@@ -392,6 +453,7 @@ export function createLogger(
 		client?: AbstractLogger;
 		noServer?: boolean;
 		allowExit?: boolean;
+		timerTTL?: number;
 	} = {}
 ) {
 	return new Logger({ tag, ...opts });

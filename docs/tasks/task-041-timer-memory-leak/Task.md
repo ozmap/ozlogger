@@ -10,11 +10,11 @@ Atualmente, o método `time(id)` adiciona um timestamp em um `Map` interno. Se `
 
 ## Critérios de Aceitação
 
-- [ ] Implementar mecanismo de limpeza para timers antigos
-- [ ] Configuração de TTL (Time To Live) para timers (default razoável, ex: 5-10min)
-- [ ] Log de aviso quando um timer é removido por expiração
-- [ ] Testes validando que timers antigos são removidos
-- [ ] Documentação atualizada sobre o comportamento
+- [x] Implementar mecanismo de limpeza para timers antigos
+- [x] Configuração de TTL (Time To Live) para timers (default razoável, ex: 5-10min)
+- [x] Log de aviso quando um timer é removido por expiração
+- [x] Testes validando que timers antigos são removidos
+- [x] Documentação atualizada sobre o comportamento
 
 ## Prioridade
 
