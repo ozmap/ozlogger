@@ -193,7 +193,9 @@ export class Logger implements LoggerMethods {
 	 */
 	public time(id: string): Logger {
 		// Validation guard for already used identifier
-		if (this.timers.has(id)) throw new Error(`Identifier ${id} is in use`);
+		if (this.timers.has(id)) {
+			this.warn(`Identifier ${id} is already in use. Overwriting...`);
+		}
 
 		this.timers.set(id, Date.now());
 
