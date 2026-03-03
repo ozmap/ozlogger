@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running tests and coverage check before push..."
+
+# Run tests with coverage - Jest will fail if coverage drops below 95%
+npm test
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Tests failed or coverage dropped below 95%!"
+  echo "❌ Push aborted. Please fix tests and ensure coverage >= 95%"
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ All tests passed with coverage >= 95%"
+echo "✅ Push allowed"
+echo ""

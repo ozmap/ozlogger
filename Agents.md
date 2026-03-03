@@ -418,3 +418,71 @@ flowchart LR
 | 🟡 | Médio | Melhoria desejável |
 | 🟢 | Baixo | Nice to have |
 | ⚪ | Backlog | Futuro indefinido |
+
+---
+
+## Regras de CI/CD e Qualidade
+
+### Cobertura de Testes Obrigatória
+
+O OZLogger mantém um **threshold mínimo de 95% de cobertura** em statements e lines. Esta regra é enforçada em múltiplos níveis:
+
+#### 1. Jest Config (`jest.config.js`)
+```javascript
+coverageThreshold: {
+  global: {
+    statements: 95,
+    lines: 95
+  }
+}
+```
+
+#### 2. Husky Pre-Push Hook
+Antes de cada `git push`, os testes são executados automaticamente. Se a cobertura cair abaixo de 95%, o push é **bloqueado**.
+
+#### 3. GitHub Actions CI
+Todo PR para `master`, `main` ou `develop` executa a suite de testes. PRs com cobertura abaixo de 95% **não podem ser mergeados**.
+
+### Fluxo de Trabalho Obrigatório
+
+```mermaid
+flowchart LR
+    Dev["💻 Desenvolvimento"] --> Tests["🧪 npm test"]
+    Tests --> |"Coverage >= 95%"| Push["📤 git push"]
+    Tests --> |"Coverage < 95%"| Fix["🔧 Corrigir"]
+    Fix --> Tests
+    Push --> CI["🔄 GitHub Actions"]
+    CI --> |"Passed"| PR["📝 Pull Request"]
+    CI --> |"Failed"| Fix
+    PR --> Merge["✅ Merge"]
+```
+
+### Checklist Antes de Criar PR
+
+**OBRIGATÓRIO** executar antes de abrir qualquer Pull Request:
+
+1. [ ] Rodar `npm test` localmente
+2. [ ] Verificar que cobertura está >= 95%
+3. [ ] Verificar que não há testes falhando
+4. [ ] Verificar que não há warnings de lint
+
+```bash
+# Comando para verificar tudo antes do PR
+npm test && npm run lint
+```
+
+### Consequências de Violação
+
+| Ação | Consequência |
+|------|--------------|
+| Push com cobertura < 95% | ❌ Bloqueado pelo husky |
+| PR com cobertura < 95% | ❌ CI falha, merge bloqueado |
+| Merge sem testes | ❌ Não permitido (branch protection) |
+
+### Branch Protection Recomendada
+
+Configure no GitHub:
+- ✅ Require status checks to pass before merging
+- ✅ Require branches to be up to date before merging
+- ✅ Required status check: `Tests & Coverage Check`
+
