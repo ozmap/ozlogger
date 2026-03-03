@@ -134,10 +134,11 @@ export function checkRequestHeader(
 	if (!(header in headers)) return false;
 
 	return Array.isArray(headers[header])
-		? (headers[header] as string[]).some((h) => h.trim() === value) ?? false
-		: (headers[header] as string)
+		? ((headers[header] as string[]).some((h) => h.trim() === value) ??
+				false)
+		: ((headers[header] as string)
 				?.split(',')
-				.some((h) => h.trim() === value) ?? false;
+				.some((h) => h.trim() === value) ?? false);
 }
 
 /**
