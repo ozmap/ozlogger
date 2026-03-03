@@ -76,7 +76,7 @@ export function json<TScope extends Logger>(
 	const now = datetime<{ timestamp?: string }>();
 	const paint = colorized();
 
-	return async (level: LevelTag, ...args: unknown[]) => {
+	return (level: LevelTag, ...args: unknown[]) => {
 		const payload = toStructuredJsonLog.call(this, level, now, tag);
 
 		for (const arg of args) {
