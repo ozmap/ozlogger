@@ -1,11 +1,4 @@
-import {
-	expect,
-	describe,
-	test,
-	beforeEach,
-	afterEach,
-	jest
-} from '@jest/globals';
+import { expect, describe, test, beforeEach, afterEach } from '@jest/globals';
 import createLogger, { Logger } from '../lib';
 
 describe('JSON Formatter', () => {

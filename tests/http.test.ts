@@ -1,11 +1,4 @@
-import {
-	expect,
-	describe,
-	test,
-	beforeAll,
-	afterAll,
-	jest
-} from '@jest/globals';
+import { expect, describe, test, beforeAll, afterAll } from '@jest/globals';
 import http from 'http';
 import createLogger, { Logger } from '../lib';
 
