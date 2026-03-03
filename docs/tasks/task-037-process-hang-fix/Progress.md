@@ -13,17 +13,17 @@
 
 ### Fase 2: Implementação - Server
 - [x] Adicionar `unref()` opcional ao servidor HTTP
-- [x] Implementar `server.close()` no shutdown
+- [x] Implementar `server.close()` no `stop()`/`shutdown()`
 - [x] Expor método para fechar servidor
 
 ### Fase 3: Implementação - Events
 - [x] Armazenar referência do handler
-- [x] Implementar `removeListener` no shutdown
+- [x] Implementar cleanup do handler no `stop()`/`shutdown()`
 - [x] Testar em cluster mode
 
 ### Fase 4: Implementação - Logger
 - [x] Adicionar opção `allowExit` na interface
-- [x] Modificar `configure()` para respeitar opção
+- [x] Propagar opção `allowExit` para o servidor HTTP
 - [x] Implementar método `shutdown()`
 - [x] Atualizar tipos exportados
 

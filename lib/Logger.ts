@@ -1,6 +1,5 @@
 import { LogWrapper } from './util/type/LogWrapper';
 import { AbstractLogger } from './util/type/AbstractLogger';
-import { EventData } from './util/type/Event';
 import { LogMethod, LoggerMethods } from './util/interface/LoggerMethods';
 import { LogContext } from './util/interface/LogContext';
 import { LogLevels } from './util/enum/LogLevels';
@@ -42,9 +41,9 @@ export class Logger implements LoggerMethods {
 	private context: LogContext;
 
 	/**
-	 * Stores the message handler reference for cleanup.
+	 * Stores the event unregister function reference for cleanup.
 	 */
-	private messageHandler: ((data: EventData) => void) | null = null;
+	private unregisterChangeLevelHandler: (() => void) | null = null;
 
 	/**
 	 * Logger module class constructor.
@@ -81,7 +80,7 @@ export class Logger implements LoggerMethods {
 			);
 		}
 
-		this.messageHandler = registerEvent(
+		this.unregisterChangeLevelHandler = registerEvent(
 			this,
 			'ozlogger.http.changeLevel',
 			(data: {
@@ -112,10 +111,10 @@ export class Logger implements LoggerMethods {
 			this.timeouts.clear();
 			this.timers.clear();
 
-			// Remove message handler to allow process exit
-			if (this.messageHandler) {
-				process.removeListener('message', this.messageHandler);
-				this.messageHandler = null;
+			// Unregister handler to avoid accumulating listeners/references
+			if (this.unregisterChangeLevelHandler) {
+				this.unregisterChangeLevelHandler();
+				this.unregisterChangeLevelHandler = null;
 			}
 
 			if (!this.server) return resolve();
@@ -126,6 +125,13 @@ export class Logger implements LoggerMethods {
 				return e ? reject(e) : resolve();
 			});
 		});
+	}
+
+	/**
+	 * Alias for stopping and cleaning up resources.
+	 */
+	public async shutdown(): Promise<void> {
+		return this.stop();
 	}
 
 	/**
