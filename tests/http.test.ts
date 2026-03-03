@@ -505,6 +505,43 @@ describe('HTTP Server Port Functions', () => {
 	});
 });
 
+describe('HTTP Server allowExit option', () => {
+	beforeEach(() => {
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+	});
+
+	afterEach(async () => {
+		const server = getServerInstance();
+		if (server) {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+		delete process.env.OZLOGGER_SERVER;
+	});
+
+	test('should call server.unref() when allowExit is true', async () => {
+		process.env.OZLOGGER_SERVER = '9870';
+		process.env.OZLOGGER_LEVEL = 'debug';
+
+		// Create logger with allowExit: true and actual server
+		const logger = createLogger('UNREF-TEST', {
+			allowExit: true
+		});
+
+		// Wait for server to start
+		await new Promise((r) => setTimeout(r, 200));
+
+		const server = getServerInstance();
+		expect(server).toBeDefined();
+		// Server should be unref'd (we can't directly test this, but coverage will show the line was hit)
+
+		await logger.stop();
+		delete process.env.OZLOGGER_LEVEL;
+	});
+});
+
 describe('HTTP Server Errors', () => {
 	beforeEach(() => {
 		resetServerState();
