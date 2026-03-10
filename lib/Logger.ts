@@ -15,6 +15,16 @@ import { context, trace } from '@opentelemetry/api';
  * Logger module class.
  */
 export class Logger implements LoggerMethods {
+	static globalAttributes: Record<string, string | number>;
+
+	/**
+	 * Global attributes to show in every log
+	 * @param data object containing attributes, needs to be k = string, v = string
+	 */
+	static setGlobalAttributes(data: Record<string, string | number>): void {
+		Logger.globalAttributes = data;
+	}
+
 	/**
 	 * Temporary storage for timers.
 	 */
@@ -43,19 +53,27 @@ export class Logger implements LoggerMethods {
 	/**
 	 * Logger module class constructor.
 	 *
-	 * @param   opts           Logger module configuration options.
-	 * @param   opts.tag       Tag with which the logger is being created.
-	 * @param   opts.client    Underlying abstract logger to override console.
-	 * @param   opts.noServer  Disable the embedded http server for runtime actions.
+	 * @param   opts             Logger module configuration options.
+	 * @param   opts.tag         Tag with which the logger is being created.
+	 * @param   opts.client      Underlying abstract logger to override console.
+	 * @param   opts.noServer    Disable the embedded http server for runtime actions.
+	 * @param   opts.customFiels Add extra fields with fixed value.
 	 */
 	public constructor(
-		opts: { tag?: string; client?: AbstractLogger; noServer?: boolean } = {}
+		opts: {
+			tag?: string;
+			client?: AbstractLogger;
+			noServer?: boolean;
+			attributes?: LogContext['attributes'];
+		} = {}
 	) {
 		this.logger = getLogWrapper.call(
 			this,
 			output(),
 			opts.client ?? console,
-			opts.tag
+			opts.tag,
+			Logger.globalAttributes,
+			opts.attributes
 		);
 		this.configure(level());
 
@@ -348,13 +366,19 @@ export class Logger implements LoggerMethods {
  * Factory function to create tagged Logger instance.
  *
  * @param   tag            Tag with which the logger is being created.
+ * @param   opts		   Optional attributes to add context to logger
  * @param   opts.client    Underlying abstract logger to override console.
  * @param   opts.noServer  Disable the embedded http server for runtime actions.
+ * @param   opts.attributes Adds fields with static value for every log
  * @returns Logger instace
  */
 export function createLogger(
 	tag?: string,
-	opts: { client?: AbstractLogger; noServer?: boolean } = {}
+	opts: {
+		client?: AbstractLogger;
+		noServer?: boolean;
+		attributes?: Record<string, string | number>;
+	} = {}
 ) {
 	return new Logger({ tag, ...opts });
 }
