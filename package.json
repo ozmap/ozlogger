@@ -1,6 +1,6 @@
 {
 	"name": "@ozmap/logger",
-	"version": "0.2.8",
+	"version": "0.2.9-beta",
 	"description": "DevOZ logger module.",
 	"main": "dist/index.js",
 	"scripts": {
