@@ -9,11 +9,10 @@ import { LogContext } from '../util/interface/LogContext';
 /**
  * Method for retrieving the abstract logging method.
  *
- * @param   output  The output format (text, json, ...).
- * @param   logger  The underlying logging client.
- * @param   tag     Tag to mark logged output.
- * @param   customFields Global labels to show every log
- * @param   attributes Local labels hold in instance to show in instance context
+ * @param   output      The output format (text, json, ...).
+ * @param   logger      The underlying logging client.
+ * @param   tag         Tag to mark logged output.
+ * @param   attributes  Local labels held in instance to show in instance context.
  * @returns The logging method.
  */
 export function getLogWrapper<TScope extends Logger>(
@@ -21,7 +20,6 @@ export function getLogWrapper<TScope extends Logger>(
 	output: (typeof Outputs)[number],
 	logger: AbstractLogger,
 	tag?: string,
-	customFields?: Record<string, string | number>,
 	attributes?: LogContext['attributes']
 ): LogWrapper {
 	switch (output) {
@@ -29,7 +27,7 @@ export function getLogWrapper<TScope extends Logger>(
 			return text.call(this, logger, tag);
 
 		case 'json':
-			return json.call(this, logger, tag, customFields, attributes);
+			return json.call(this, logger, tag, attributes);
 
 		default:
 			throw new Error(`Log output '${output}' is not supported.`);

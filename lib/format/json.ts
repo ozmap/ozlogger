@@ -17,8 +17,7 @@ import { LogContext } from '../util/interface/LogContext';
  * @param   level      The log level identifier.
  * @param   timestamp  Function that returns an object with datetime specific properties.
  * @param   tag        Optional tag to mark logged output.
- * @param   globalAttributes Optional global labels to show every log
- * @param   attributes Optional labels to show every instance log
+ * @param   attributes Optional labels to show in every instance log.
  * @returns The structured log object with `toString` and `push` methods.
  */
 function toStructuredJsonLog<TScope extends Logger>(
@@ -26,7 +25,6 @@ function toStructuredJsonLog<TScope extends Logger>(
 	level: LevelTag,
 	timestamp: () => { timestamp?: string },
 	tag?: string,
-	globalAttributes?: Record<string, string | number>,
 	attributes?: LogContext['attributes']
 ) {
 	const data: Record<number, unknown> = {};
@@ -35,23 +33,22 @@ function toStructuredJsonLog<TScope extends Logger>(
 			? ('warn' as const)
 			: (level.toLowerCase() as keyof typeof LogLevels);
 
-	const structuredData = {
-		...timestamp(),
-		...this.getContext(),
-		...globalAttributes,
-		...attributes,
-		tag,
-		// data /** @deprecated Use 'body' instead. */,
-		level /** @deprecated Use 'severityText' instead. */,
-		severityText: level,
-		severityNumber: LogLevels[logLevelKey],
-		body: data
-	};
-
 	let i = 0;
 
 	return {
-		toString() {
+		toString: () => {
+			const structuredData = {
+				...timestamp(),
+				...this.getContext(),
+				...Logger.globalAttributes,
+				...attributes,
+				tag,
+				level /** @deprecated Use 'severityText' instead. */,
+				severityText: level,
+				severityNumber: LogLevels[logLevelKey],
+				body: data
+			};
+
 			try {
 				return JSON.stringify(structuredData, getCircularReplacer());
 			} catch (e) {
@@ -71,17 +68,15 @@ function toStructuredJsonLog<TScope extends Logger>(
 /**
  * Formatting method for JSON output.
  *
- * @param   logger  The underlying logging client.
- * @param   tag     Tag to mark logged output.
- * @param   globalFields Global optional labels to show every log
- * @param   attributes Instance optional labels to show in every log from instance
+ * @param   logger      The underlying logging client.
+ * @param   tag         Tag to mark logged output.
+ * @param   attributes  Instance optional labels to show in every log from instance.
  * @returns The logging method.
  */
 export function json<TScope extends Logger>(
 	this: TScope,
 	logger: AbstractLogger,
 	tag?: string,
-	globalFields?: Record<string, string | number>,
 	attributes?: LogContext['attributes']
 ): LogWrapper {
 	const now = datetime<{ timestamp?: string }>();
@@ -93,7 +88,6 @@ export function json<TScope extends Logger>(
 			level,
 			now,
 			tag,
-			globalFields,
 			attributes
 		);
 

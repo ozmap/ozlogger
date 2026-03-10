@@ -72,7 +72,6 @@ export class Logger implements LoggerMethods {
 			output(),
 			opts.client ?? console,
 			opts.tag,
-			Logger.globalAttributes,
 			opts.attributes
 		);
 		this.configure(level());
