@@ -6,8 +6,10 @@ export type LogMethod = ((...args: unknown[]) => void) & {
 	timeEnd(id: string): Logger;
 };
 
-export interface LoggerMethods
-	extends Record<keyof Omit<typeof LogLevels, 'quiet'>, LogMethod> {
+export interface LoggerMethods extends Record<
+	keyof Omit<typeof LogLevels, 'quiet'>,
+	LogMethod
+> {
 	time(id: string): Logger;
 	timeEnd(id: string): Logger;
 	withContext(ctx: LogContext): Logger;
