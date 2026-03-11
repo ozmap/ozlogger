@@ -90,6 +90,8 @@ export function json<TScope extends Logger>(
 			tag,
 			attributes
 		);
+	return (level: LevelTag, ...args: unknown[]) => {
+		const payload = toStructuredJsonLog.call(this, level, now, tag);
 
 		for (const arg of args) {
 			payload.push(normalize(arg));

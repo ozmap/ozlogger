@@ -227,9 +227,11 @@ export function host(): [number, string] {
 
 	// Format: '[::1]:9898'
 	if (/^\[.*\]:\d+$/.test(input)) {
-		const [ipv6, p] = input.slice(1, -1).split(']:');
-		hostname = ipv6;
-		port = parseInt(p);
+		const match = input.match(/^\[(.+)\]:(\d+)$/);
+		if (match) {
+			hostname = match[1];
+			port = parseInt(match[2]);
+		}
 		return [port, hostname];
 	}
 
