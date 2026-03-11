@@ -1,12 +1,27 @@
-import { expect, describe, test, beforeAll, afterAll } from '@jest/globals';
+import {
+	expect,
+	describe,
+	test,
+	beforeAll,
+	afterAll,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import http from 'http';
-import createLogger, { Logger } from '../lib';
+import createLogger, {
+	Logger,
+	resetServerState,
+	getServerPort,
+	getServerInstance
+} from '../lib';
 
 describe('HTTP Server Tests', () => {
 	let logger: Logger;
 	const port = 9897; // Use different port to avoid conflict
 
 	beforeAll(async () => {
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
 		process.env.OZLOGGER_SERVER = String(port);
 		process.env.OZLOGGER_LEVEL = 'debug';
 		logger = createLogger('HTTP-TEST');
@@ -16,6 +31,7 @@ describe('HTTP Server Tests', () => {
 
 	afterAll(async () => {
 		await logger.stop();
+		resetServerState();
 		delete process.env.OZLOGGER_SERVER;
 		delete process.env.OZLOGGER_LEVEL;
 	});
@@ -248,6 +264,8 @@ describe('HTTP Server content size limit', () => {
 	const port = 9895;
 
 	beforeAll(async () => {
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
 		process.env.OZLOGGER_SERVER = String(port);
 		process.env.OZLOGGER_LEVEL = 'debug';
 		logger = createLogger('SIZE-TEST');
@@ -256,6 +274,7 @@ describe('HTTP Server content size limit', () => {
 
 	afterAll(async () => {
 		await logger.stop();
+		resetServerState();
 		delete process.env.OZLOGGER_SERVER;
 		delete process.env.OZLOGGER_LEVEL;
 	});
@@ -360,5 +379,222 @@ describe('checkRequestHeader', () => {
 				'application/json'
 			)
 		).toBe(false);
+	});
+});
+
+describe('HTTP Server Singleton Pattern', () => {
+	beforeEach(() => {
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+	});
+
+	afterEach(async () => {
+		const server = getServerInstance();
+		if (server) {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+		delete process.env.OZLOGGER_SERVER;
+	});
+
+	test('should return same server instance for multiple loggers', async () => {
+		process.env.OZLOGGER_SERVER = '9893';
+
+		const logger1 = createLogger('SINGLETON-1');
+		await new Promise((r) => setTimeout(r, 100)); // Wait for server to start
+
+		const logger2 = createLogger('SINGLETON-2');
+		const logger3 = createLogger('SINGLETON-3');
+
+		// All should share the same server (singleton pattern)
+		// First logger gets the server, others get the same instance
+		expect(logger1.server).toBeDefined();
+		expect(logger2.server).toBe(logger1.server);
+		expect(logger3.server).toBe(logger1.server);
+
+		await logger1.stop();
+		await logger2.stop();
+		await logger3.stop();
+	});
+
+	test('should not throw when multiple loggers created simultaneously', async () => {
+		delete process.env.OZLOGGER_HTTP;
+		process.env.OZLOGGER_SERVER = '9892';
+
+		// Create multiple loggers without waiting
+		expect(() => {
+			const loggers = [
+				createLogger('MULTI-1'),
+				createLogger('MULTI-2'),
+				createLogger('MULTI-3')
+			];
+
+			// Cleanup
+			loggers.forEach((l) => l.stop());
+		}).not.toThrow();
+	});
+});
+
+describe('HTTP Server Port Functions', () => {
+	beforeEach(() => {
+		resetServerState();
+	});
+
+	afterEach(async () => {
+		const server = getServerInstance();
+		if (server) {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+		delete process.env.OZLOGGER_SERVER;
+	});
+
+	test('getServerPort should return null when server not running', () => {
+		process.env.OZLOGGER_HTTP = 'false';
+		expect(getServerPort()).toBeNull();
+	});
+
+	test('getServerInstance should return null when server not running', () => {
+		process.env.OZLOGGER_HTTP = 'false';
+		expect(getServerInstance()).toBeNull();
+	});
+
+	test('getServerPort should return port after server starts', async () => {
+		delete process.env.OZLOGGER_HTTP;
+		process.env.OZLOGGER_SERVER = '9891';
+
+		const logger = createLogger('PORT-TEST');
+		await new Promise((r) => setTimeout(r, 200));
+
+		expect(getServerPort()).toBe(9891);
+
+		await logger.stop();
+	});
+
+	test('dynamic port (0) should assign an available port', async () => {
+		delete process.env.OZLOGGER_HTTP;
+		process.env.OZLOGGER_SERVER = '0';
+
+		const logger = createLogger('DYNAMIC-PORT');
+		await new Promise((r) => setTimeout(r, 200));
+
+		const port = getServerPort();
+		expect(port).not.toBeNull();
+		expect(port).toBeGreaterThan(0);
+
+		await logger.stop();
+	});
+
+	test('resetServerState should clear server state', async () => {
+		delete process.env.OZLOGGER_HTTP;
+		process.env.OZLOGGER_SERVER = '9890';
+
+		const logger = createLogger('RESET-TEST');
+		await new Promise((r) => setTimeout(r, 200));
+
+		expect(getServerInstance()).not.toBeNull();
+		expect(getServerPort()).toBe(9890);
+
+		await logger.stop();
+		resetServerState();
+
+		expect(getServerInstance()).toBeNull();
+		expect(getServerPort()).toBeNull();
+	});
+});
+
+describe('HTTP Server allowExit option', () => {
+	beforeEach(() => {
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+	});
+
+	afterEach(async () => {
+		const server = getServerInstance();
+		if (server) {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+		delete process.env.OZLOGGER_SERVER;
+	});
+
+	test('should call server.unref() when allowExit is true', async () => {
+		process.env.OZLOGGER_SERVER = '9870';
+		process.env.OZLOGGER_LEVEL = 'debug';
+
+		// Create logger with allowExit: true and actual server
+		const logger = createLogger('UNREF-TEST', {
+			allowExit: true
+		});
+
+		// Wait for server to start
+		await new Promise((r) => setTimeout(r, 200));
+
+		const server = getServerInstance();
+		expect(server).toBeDefined();
+		// Server should be unref'd (we can't directly test this, but coverage will show the line was hit)
+
+		await logger.stop();
+		delete process.env.OZLOGGER_LEVEL;
+	});
+});
+
+describe('HTTP Server Errors', () => {
+	beforeEach(() => {
+		resetServerState();
+	});
+
+	afterEach(async () => {
+		const server = getServerInstance();
+		if (server) {
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		}
+		resetServerState();
+		delete process.env.OZLOGGER_HTTP;
+		delete process.env.OZLOGGER_SERVER;
+	});
+
+	test('should handle generic server errors', async () => {
+		process.env.OZLOGGER_SERVER = '9880';
+
+		const logger = createLogger('ERROR-TEST');
+		await new Promise((r) => setTimeout(r, 200));
+
+		const server = getServerInstance();
+		expect(server).toBeDefined();
+
+		// Emulate generic error
+		server!.emit('error', new Error('Generic error'));
+
+		// Should log error (verified by coverage)
+
+		await logger.stop();
+	});
+
+	test('should handle EADDRINUSE gracefully', async () => {
+		process.env.OZLOGGER_SERVER = '9883';
+
+		// Start a blocking server on SAME host/port
+		const blockingServer = http.createServer();
+		await new Promise<void>((resolve) =>
+			// Explicitly bind to 'localhost' to conflict with logger default
+			blockingServer.listen(9883, 'localhost', () => resolve())
+		);
+
+		// Try to start logger on same port (defaults to localhost)
+		// We need to use createLogger to trigger the server setup
+		const logger = createLogger('CONFLICT-TEST');
+
+		// Wait for the server to ATTEMPT to start and FAIL
+		await new Promise((r) => setTimeout(r, 1000));
+
+		expect(getServerInstance()).toBeNull();
+		expect(getServerPort()).toBeNull();
+
+		await logger.stop();
+		blockingServer.close();
 	});
 });

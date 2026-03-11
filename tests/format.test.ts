@@ -306,3 +306,35 @@ describe('Format fallback behavior', () => {
 		delete process.env.OZLOGGER_LEVEL;
 	});
 });
+
+describe('JSON Formatter error handling', () => {
+	test('should handle objects that fail JSON.stringify', () => {
+		const logged: string[] = [];
+		const mockLogger = { log: (msg: string) => logged.push(msg) };
+
+		process.env.OZLOGGER_OUTPUT = 'json';
+		process.env.OZLOGGER_LEVEL = 'debug';
+
+		const logger = createLogger('STRINGIFY-FAIL', {
+			client: mockLogger,
+			noServer: true
+		});
+
+		// BigInt cannot be serialized by JSON.stringify and will throw
+		const problematicObj = {
+			normal: 'value',
+			bigValue: BigInt(9007199254740991)
+		};
+
+		logger.info(problematicObj);
+
+		// Should still log something (fallback message replaces body entirely)
+		expect(logged.length).toBe(1);
+		const output = JSON.parse(logged[0]);
+		// When stringify fails, body is replaced with the error message string
+		expect(output.body).toContain('Unable to serialize');
+
+		delete process.env.OZLOGGER_OUTPUT;
+		delete process.env.OZLOGGER_LEVEL;
+	});
+});

@@ -157,11 +157,41 @@ export class Logger implements LoggerMethods {
 
 			if (!this.server) return resolve();
 
-			this.server.close((e) => {
+			// If server is not listening (was not started or already closed), just resolve
+			if (!this.server.listening) {
 				delete process.env.OZLOGGER_HTTP;
+				return resolve();
+			}
 
-				return e ? reject(e) : resolve();
-			});
+			// When using singleton server, we don't want to close it if it's shared
+			// unless we implement reference counting. For now, we only close if we created it.
+			// However since we don't track who created it easily here, we'll just check if it's listening.
+			// The issue "Server is not running" happens when calling close() on an already closed server.
+
+			try {
+				this.server.close((e) => {
+					delete process.env.OZLOGGER_HTTP;
+					// Ignore "Server is not running" error since it might have been closed by another logger
+					if (
+						e &&
+						(e as NodeJS.ErrnoException).code !==
+							'ERR_SERVER_NOT_RUNNING'
+					) {
+						return reject(e);
+					}
+					resolve();
+				});
+			} catch (e) {
+				// Safety catch for sync errors
+				if (
+					(e as NodeJS.ErrnoException).code !==
+					'ERR_SERVER_NOT_RUNNING'
+				) {
+					reject(e);
+				} else {
+					resolve();
+				}
+			}
 		});
 	}
 
@@ -186,7 +216,11 @@ export class Logger implements LoggerMethods {
 					this.logger(name, ...args);
 				};
 		const timeEnd = !enabled
-			? (_: string) => this
+			? (id: string) => {
+					// We must cleanup the timer even if we don't log
+					if (this.timers.has(id)) this.timers.delete(id);
+					return this;
+				}
 			: (id: string) => {
 					this.logger(name, `${id}: ${this.getTime(id)} ms`);
 					return this;
