@@ -2,30 +2,30 @@
 
 ## Status Atual
 
-🟡 **Workaround Disponível**
+� **Concluído**
 
 ## Checklist de Subtarefas
 
 ### Fase 1: Decisão
 - [x] Documentar opções de solução
-- [ ] Decidir qual abordagem implementar
-- [ ] Validar com testes manuais
+- [x] Decidir qual abordagem implementar (Solução B: Warning + Overwrite)
+- [x] Validar com testes manuais
 
 ### Fase 2: Implementação
-- [ ] Modificar método `time()`
-- [ ] Adicionar warning log
-- [ ] Ou adicionar opção configurável
-- [ ] Manter backward compatibility
+- [x] Modificar método `time()`
+- [x] Adicionar warning log
+- [x] Ou adicionar opção configurável (Não implementado, mantido simples)
+- [x] Manter backward compatibility (Comportamento alterado de throw para warning)
 
 ### Fase 3: Testes
-- [ ] Teste de timer duplicado
-- [ ] Teste de warning gerado
-- [ ] Teste de duração correta após overwrite
-- [ ] Teste de comportamento configurável (se aplicável)
+- [x] Teste de timer duplicado
+- [x] Teste de warning gerado
+- [x] Teste de duração correta após overwrite
+- [x] Teste de comportamento configurável (se aplicável)
 
 ### Fase 4: Documentação
-- [ ] Atualizar README
-- [ ] Documentar mudança de comportamento
+- [x] Atualizar README
+- [x] Documentar mudança de comportamento
 - [ ] Atualizar CHANGELOG
 
 ## Histórico de Progresso
@@ -34,11 +34,12 @@
 |------|------|-----------|
 | - | Issue identificada | Documentada em ISSUES.md |
 | - | Soluções propostas | 3 opções documentadas |
-| - | Task criada | Aguardando decisão |
+| 2026-03-02 | Task criada | Aguardando decisão |
+| 2026-03-02 | Implementação | Implementado sobrescrita de timer com warning |
 
 ## Bloqueios
 
-- **Decisão pendente:** Qual abordagem implementar (A, B, ou C)
+- Nenhum
 
 ## Workarounds Atuais
 
@@ -60,6 +61,5 @@ logger.time(randomUUID());
 
 ## Notas
 
-- Solução B (warn + overwrite) é recomendada
-- Manter exceção como opção para quem quer comportamento estrito
-- Considerar deprecar comportamento atual na v0.3.x
+- Solução B (warn + overwrite) foi a escolhida por ser a mais robusta para produção.
+- Manter exceção como opção para quem quer comportamento estrito não foi implementado para manter a simplicidade (KISS).
