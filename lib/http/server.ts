@@ -13,14 +13,16 @@ import routes from './routes';
 /**
  * Function to create HTTP server on the primary process.
  *
- * @param   port     The interface port for the server to listen on.
- * @param   address  The interface address for the server to listen on.
+ * @param   port       The interface port for the server to listen on.
+ * @param   address    The interface address for the server to listen on.
+ * @param   allowExit  If true, calls server.unref() to allow process exit.
  * @returns The HTTP server that was setup.
  */
 export function setupLogServer<TScope extends Logger>(
 	this: TScope,
 	port: number,
-	address: string
+	address: string,
+	allowExit?: boolean
 ): Server | void {
 	if (cluster.isWorker) return;
 
@@ -29,7 +31,7 @@ export function setupLogServer<TScope extends Logger>(
 	process.env.OZLOGGER_HTTP = 'false';
 
 	try {
-		return http
+		const server = http
 			.createServer(handleRequest.call(this))
 			.listen(port, address, () => {
 				this.info(`Log server started listening at ${address}:${port}`);
@@ -37,6 +39,12 @@ export function setupLogServer<TScope extends Logger>(
 			.on('error', (e) => {
 				this.error(`Log server at ${address}:${port} got an error`, e);
 			});
+
+		if (allowExit) {
+			server.unref();
+		}
+
+		return server;
 	} catch (e) {
 		this.error(`Log server failed to start at ${address}:${port}`);
 	}

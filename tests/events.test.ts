@@ -6,7 +6,7 @@ import {
 	afterEach,
 	jest
 } from '@jest/globals';
-import { broadcastEvent } from '../lib/util/Events';
+import { broadcastEvent, registerEvent } from '../lib/util/Events';
 import createLogger, { Logger } from '../lib';
 import cluster from 'cluster';
 
@@ -77,6 +77,72 @@ describe('Events', () => {
 
 			expect(receivedData).not.toBeNull();
 			expect(receivedData!.event).toBe('empty.event');
+		});
+	});
+
+	describe('registerEvent', () => {
+		test('should attach only one process listener for multiple registrations', () => {
+			const ctx1 = {} as unknown as Logger;
+			const ctx2 = {} as unknown as Logger;
+			const handler1 = jest.fn();
+			const handler2 = jest.fn();
+
+			expect(process.listeners('message').length).toBe(0);
+
+			const unregister1 = registerEvent(ctx1, 'multi.event', handler1);
+			const listenersAfterFirst = process.listeners('message').length;
+			expect(listenersAfterFirst).toBe(1);
+
+			const unregister2 = registerEvent(ctx2, 'multi.event', handler2);
+			const listenersAfterSecond = process.listeners('message').length;
+			expect(listenersAfterSecond).toBe(1);
+
+			process.emit(
+				'message' as NodeJS.Signals,
+				{
+					event: 'multi.event',
+					payload: 'x'
+				} as unknown as NodeJS.Signals
+			);
+
+			expect(handler1).toHaveBeenCalledTimes(1);
+			expect(handler2).toHaveBeenCalledTimes(1);
+
+			unregister1();
+			unregister2();
+		});
+
+		test('should ignore messages without event field and with unknown event', () => {
+			const ctx = {} as unknown as Logger;
+			const handler = jest.fn();
+			const unregister = registerEvent(ctx, 'known.event', handler);
+
+			process.emit(
+				'message' as NodeJS.Signals,
+				{} as unknown as NodeJS.Signals
+			);
+			process.emit(
+				'message' as NodeJS.Signals,
+				{ event: 'unknown.event' } as unknown as NodeJS.Signals
+			);
+
+			expect(handler).toHaveBeenCalledTimes(0);
+			unregister();
+		});
+
+		test('should detach listener when no handlers remain', () => {
+			const ctx = {} as unknown as Logger;
+			const handler = jest.fn();
+
+			expect(process.listeners('message').length).toBe(0);
+			const unregister = registerEvent(ctx, 'idle.event', handler);
+			expect(process.listeners('message').length).toBe(1);
+
+			unregister();
+			expect(process.listeners('message').length).toBe(0);
+
+			// Calling twice should be a no-op
+			unregister();
 		});
 	});
 });
