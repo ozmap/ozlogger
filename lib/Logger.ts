@@ -78,11 +78,11 @@ export class Logger implements LoggerMethods {
 	/**
 	 * Logger module class constructor.
 	 *
-	 * @param   opts             Logger module configuration options.
-	 * @param   opts.tag         Tag with which the logger is being created.
-	 * @param   opts.client      Underlying abstract logger to override console.
-	 * @param   opts.noServer    Disable the embedded http server for runtime actions.
-	 * @param   opts.customFiels Add extra fields with fixed value.
+	 * @param   opts                Logger module configuration options.
+	 * @param   opts.tag            Tag with which the logger is being created.
+	 * @param   opts.client         Underlying abstract logger to override console.
+	 * @param   opts.noServer       Disable the embedded http server for runtime actions.
+	 * @param   opts.attributes     Attributes to add extra fields with fixed value.
 	 * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
 	 * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
 	 */
