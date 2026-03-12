@@ -40,8 +40,8 @@ function toStructuredJsonLog<TScope extends Logger>(
 			const structuredData = {
 				...timestamp(),
 				...this.getContext(),
-				...Logger.globalAttributes,
-				...attributes,
+				...(Logger.globalAttributes ?? {}),
+				...(attributes ?? {}),
 				tag,
 				level /** @deprecated Use 'severityText' instead. */,
 				severityText: level,
