@@ -494,12 +494,12 @@ export class Logger implements LoggerMethods {
  * @param   opts.client    Underlying abstract logger to override console.
  * @param   opts.noServer  Disable the embedded http server for runtime actions.
  * @param   opts.attributes Adds fields with static value for every log
- * @param   tag              Tag with which the logger is being created.
- * @param   opts.client      Underlying abstract logger to override console.
- * @param   opts.noServer    Disable the embedded http server for runtime actions.
- * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
- * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
- * @returns Logger instace
+ * @param   tag             Tag with which the logger is being created.
+ * @param   opts            Optional attributes to add context to logger
+ * @param   opts.client     Underlying abstract logger to override console.
+ * @param   opts.noServer   Disable the embedded http server for runtime actions.
+ * @param   opts.attributes Adds fields with static value for every log
+ * @returns Logger instance
  */
 export function createLogger(
 	tag?: string,
