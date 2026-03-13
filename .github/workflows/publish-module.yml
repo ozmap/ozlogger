@@ -23,5 +23,5 @@ jobs:
       - name: publish
         uses: JS-DevTools/npm-publish@v1
         with:
-          token: ${{ secrets.NPM_TOKEN_DOZ }}
+          token: ${{ secrets.NPM_TOKEN }}
           access: public
