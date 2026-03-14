@@ -25,6 +25,18 @@ const DEFAULT_TIMER_GC_INTERVAL = 60000;
  * Logger module class.
  */
 export class Logger implements LoggerMethods {
+	static globalAttributes: LogContext['attributes'] = {};
+
+	/**
+	 * Sets global attributes to be included in every log output.
+	 * Subsequent calls replace any previously set global attributes rather than merging them.
+	 *
+	 * @param   data  Attributes shared by all logger instances.
+	 */
+	static setGlobalAttributes(data: LogContext['attributes']): void {
+		Logger.globalAttributes = data;
+	}
+
 	/**
 	 * Temporary storage for timers.
 	 */
@@ -68,18 +80,20 @@ export class Logger implements LoggerMethods {
 	/**
 	 * Logger module class constructor.
 	 *
-	 * @param   opts             Logger module configuration options.
-	 * @param   opts.tag         Tag with which the logger is being created.
-	 * @param   opts.client      Underlying abstract logger to override console.
-	 * @param   opts.noServer    Disable the embedded http server for runtime actions.
-	 * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
-	 * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
+	 * @param   opts                Logger module configuration options.
+	 * @param   opts.tag            Tag with which the logger is being created.
+	 * @param   opts.client         Underlying abstract logger to override console.
+	 * @param   opts.noServer       Disable the embedded http server for runtime actions.
+	 * @param   opts.attributes     Attributes to add extra fields with fixed value.
+	 * @param   opts.allowExit      Allow process to exit naturally (uses server.unref()).
+	 * @param   opts.timerTTL       TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
 	 */
 	public constructor(
 		opts: {
 			tag?: string;
 			client?: AbstractLogger;
 			noServer?: boolean;
+			attributes?: LogContext['attributes'];
 			allowExit?: boolean;
 			timerTTL?: number;
 		} = {}
@@ -88,7 +102,8 @@ export class Logger implements LoggerMethods {
 			this,
 			output(),
 			opts.client ?? console,
-			opts.tag
+			opts.tag,
+			opts.attributes
 		);
 		this.configure(level());
 
@@ -476,18 +491,21 @@ export class Logger implements LoggerMethods {
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag              Tag with which the logger is being created.
- * @param   opts.client      Underlying abstract logger to override console.
- * @param   opts.noServer    Disable the embedded http server for runtime actions.
- * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
- * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
- * @returns Logger instace
+ * @param   tag               Tag with which the logger is being created.
+ * @param   opts              Optional logger configuration.
+ * @param   opts.client       Underlying abstract logger to override console.
+ * @param   opts.noServer     Disable the embedded http server for runtime actions.
+ * @param   opts.attributes   Adds fixed fields to every log emitted by the instance.
+ * @param   opts.allowExit    Allow process to exit naturally (uses server.unref()).
+ * @param   opts.timerTTL     TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
+ * @returns Logger instance.
  */
 export function createLogger(
 	tag?: string,
 	opts: {
 		client?: AbstractLogger;
 		noServer?: boolean;
+		attributes?: LogContext['attributes'];
 		allowExit?: boolean;
 		timerTTL?: number;
 	} = {}

@@ -1,0 +1,30 @@
+name: Publish Beta Version
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  build:
+    name: tsc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: 'cat package.json'
+        run: cat ./package.json
+      - name: install node v22
+        uses: actions/setup-node@v2
+        with:
+          registry-url: 'https://registry.npmjs.org'
+          node-version: 22
+      - name: npm install
+        run: npm install
+      - name: tsc
+        run: npm run build
+      - name: publish
+        uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          access: public
+          tag: 'beta'
