@@ -1,6 +1,5 @@
 # OZLogger
 
-[![npm version](https://img.shields.io/npm/v/@ozmap/logger.svg)](https://www.npmjs.com/package/@ozmap/logger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Módulo de logging profissional para Node.js desenvolvido pela DevOZ. Projetado para ambientes de produção com suporte a OpenTelemetry, saída JSON estruturada, colorização de terminal, e controle dinâmico de níveis de log via HTTP.
@@ -157,6 +156,19 @@ A saída JSON do OZLogger é compatível com:
 
 ## Instalação
 
+O pacote é publicado no GitHub Packages, no escopo `@ozmap`. Mesmo quando o pacote está com visibilidade pública, o GitHub Packages exige autenticação para instalação via npm.
+
+Crie ou atualize seu `~/.npmrc` com:
+
+```ini
+@ozmap:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=SEU_GITHUB_PAT_CLASSIC
+```
+
+O token precisa ter pelo menos o escopo `read:packages`.
+
+Depois disso, instale normalmente:
+
 ```bash
 npm install @ozmap/logger
 ```
@@ -172,6 +184,112 @@ ou com pnpm:
 ```bash
 pnpm add @ozmap/logger
 ```
+
+Se esta for a primeira publicação do pacote no GitHub Packages, deixe a visibilidade do package como pública na página do pacote dentro da organização `ozmap`.
+
+---
+
+## Publicação e Canais
+
+O repositório usa GitHub Actions para publicar automaticamente no GitHub Packages, sempre no pacote `@ozmap/logger`.
+
+### Canais publicados
+
+| Origem | Tag npm | Objetivo |
+|--------|---------|----------|
+| `master` | `latest` | Release de produção |
+| `develop` | `beta` | Release contínua de desenvolvimento |
+| Pull Request com label `deployToTest` | `test` | Release efêmera para validação |
+
+### Regras de publicação
+
+- Push em `develop` publica uma nova versão com tag `beta`
+- Push em `master` publica a versão estável com tag `latest`
+- Pull Request só publica com tag `test` quando o label `deployToTest` estiver presente
+- PR sem o label `deployToTest` não gera publicação de pacote
+- PRs vindas de fork não publicam pacote, por segurança do workflow
+
+### Como gerar novos deploys
+
+#### Deploy de teste (`test`)
+
+1. Abra ou atualize uma PR com origem no próprio repositório
+2. Adicione o label `deployToTest`
+3. Aguarde o workflow publicar a versão `test`
+4. Para gerar um novo deploy de teste, faça novo push na PR
+
+Se quiser forçar nova execução sem alterar código, remova o label `deployToTest` e adicione novamente.
+
+#### Deploy beta (`beta`)
+
+1. Faça merge ou push direto em `develop`
+2. O workflow publica automaticamente uma nova versão com tag `beta`
+
+#### Deploy de produção (`latest`)
+
+1. Atualize o campo `version` no `package.json`
+2. Faça merge em `master`
+3. O workflow publica essa versão com tag `latest`
+
+Se a mesma versão já existir no GitHub Packages, o workflow pula a publicação. Para um novo release de produção, a versão do `package.json` precisa ser incrementada.
+
+### Versionamento gerado pelo workflow
+
+- `latest` usa exatamente a versão definida no `package.json`
+- `beta` usa a versão base com sufixo de build automático
+- `test` usa a versão base com sufixo identificando PR e execução do workflow
+
+Exemplos:
+
+- `0.2.8` para `latest`
+- `0.2.8-beta.145.1` para `beta`
+- `0.2.8-pr.87.145.1` para `test`
+
+### Como testar nas máquinas de desenvolvimento
+
+Depois de configurar o `~/.npmrc`, os devs podem instalar qualquer canal explicitamente.
+
+#### Instalar produção (`latest`)
+
+```bash
+npm install @ozmap/logger@latest
+```
+
+#### Instalar beta (`beta`)
+
+```bash
+npm install @ozmap/logger@beta
+```
+
+#### Instalar teste (`test`)
+
+```bash
+npm install @ozmap/logger@test
+```
+
+#### Verificar qual versão cada tag aponta
+
+```bash
+npm view @ozmap/logger dist-tags --registry=https://npm.pkg.github.com
+```
+
+#### Testar uma alteração local sem publicar
+
+Para validar o pacote localmente antes de subir para o registry:
+
+```bash
+pnpm install
+pnpm build
+npm pack
+```
+
+Isso gera um tarball `.tgz` que pode ser instalado em outro projeto de teste:
+
+```bash
+npm install ../ozlogger/ozmap-logger-0.2.8.tgz
+```
+
+Esse fluxo é o mais rápido para validar build, tipagens e empacotamento sem depender do GitHub Actions.
 
 ---
 

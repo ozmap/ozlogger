@@ -1,0 +1,109 @@
+name: Publish Package to GitHub Packages
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Publish tagged package
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' ||
+      (
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(github.event.pull_request.labels.*.name, 'deployToTest')
+      )
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@ozmap'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Resolve publish channel and version
+        id: publish_meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            DIST_TAG=test
+            PACKAGE_VERSION="${BASE_VERSION}-pr.${PR_NUMBER}.${RUN_NUMBER}.${RUN_ATTEMPT}"
+          elif [ "$REF_NAME" = "develop" ]; then
+            DIST_TAG=beta
+            PACKAGE_VERSION="${BASE_VERSION}-beta.${RUN_NUMBER}.${RUN_ATTEMPT}"
+          elif [ "$REF_NAME" = "master" ]; then
+            DIST_TAG=latest
+            PACKAGE_VERSION="$BASE_VERSION"
+          else
+            echo "Unsupported publish source: $EVENT_NAME / $REF_NAME" >&2
+            exit 1
+          fi
+
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp package version for pre-release channels
+        if: steps.publish_meta.outputs.dist_tag != 'latest'
+        run: npm version "${{ steps.publish_meta.outputs.package_version }}" --no-git-tag-version
+
+      - name: Check whether stable version already exists
+        if: steps.publish_meta.outputs.dist_tag == 'latest'
+        id: stable_check
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if npm view "${{ steps.publish_meta.outputs.package_name }}@${{ steps.publish_meta.outputs.package_version }}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish package
+        if: steps.publish_meta.outputs.dist_tag != 'latest' || steps.stable_check.outputs.exists != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm publish --tag "${{ steps.publish_meta.outputs.dist_tag }}"
+
+      - name: Skip duplicate stable publish
+        if: steps.publish_meta.outputs.dist_tag == 'latest' && steps.stable_check.outputs.exists == 'true'
+        run: echo "Version ${{ steps.publish_meta.outputs.package_version }} is already published in GitHub Packages. Bump package.json to release a new stable build."
