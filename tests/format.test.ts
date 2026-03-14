@@ -19,7 +19,7 @@ describe('JSON Formatter', () => {
 	afterEach(() => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
-		Logger.globalAttributes = undefined;
+		Logger.globalAttributes = {};
 	});
 
 	test('should output valid JSON', () => {
@@ -191,7 +191,7 @@ describe('Text Formatter', () => {
 	afterEach(() => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
-		Logger.globalAttributes = undefined;
+		Logger.globalAttributes = {};
 	});
 
 	test('should output text format', () => {
@@ -255,7 +255,7 @@ describe('Text Formatter with datetime', () => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
 		delete process.env.OZLOGGER_DATETIME;
-		Logger.globalAttributes = undefined;
+		Logger.globalAttributes = {};
 	});
 
 	test('should include timestamp in text output', () => {
@@ -285,7 +285,7 @@ describe('JSON Formatter with datetime', () => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
 		delete process.env.OZLOGGER_DATETIME;
-		Logger.globalAttributes = undefined;
+		Logger.globalAttributes = {};
 	});
 
 	test('should include timestamp in JSON output', () => {
@@ -351,7 +351,7 @@ describe('Format fallback behavior', () => {
 
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
-		Logger.globalAttributes = undefined;
+		Logger.globalAttributes = {};
 	});
 });
 
@@ -376,14 +376,17 @@ describe('JSON Formatter error handling', () => {
 
 		logger.info(problematicObj);
 
-		// Should still log something (fallback message replaces body entirely)
+		// Should still log something (minimal safe fallback payload)
 		expect(logged.length).toBe(1);
 		const output = JSON.parse(logged[0]);
-		// When stringify fails, body is replaced with the error message string
+		// Fallback builds a minimal guaranteed-serializable payload
 		expect(output.body).toContain('Unable to serialize');
+		// Fallback should not include unserializable attributes/context
+		expect(output.severityText).toBe('INFO');
+		expect(output.tag).toBe('STRINGIFY-FAIL');
 
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
-		Logger.globalAttributes = undefined;
+		Logger.globalAttributes = {};
 	});
 });

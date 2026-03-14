@@ -43,6 +43,7 @@ function toStructuredJsonLog<TScope extends Logger>(
 				...(Logger.globalAttributes ?? {}),
 				...(attributes ?? {}),
 				tag,
+				data /** @deprecated Use 'body' instead. */,
 				level /** @deprecated Use 'severityText' instead. */,
 				severityText: level,
 				severityNumber: LogLevels[logLevelKey],
@@ -52,9 +53,14 @@ function toStructuredJsonLog<TScope extends Logger>(
 			try {
 				return JSON.stringify(structuredData, getCircularReplacer());
 			} catch (e) {
-				structuredData.body =
-					'[OZLogger internal] - Unable to serialize log data';
-				return JSON.stringify(structuredData, getCircularReplacer());
+				const fallback = {
+					...timestamp(),
+					tag,
+					severityText: level,
+					severityNumber: LogLevels[logLevelKey],
+					body: '[OZLogger internal] - Unable to serialize log data'
+				};
+				return JSON.stringify(fallback);
 			}
 		},
 		push(value: unknown) {

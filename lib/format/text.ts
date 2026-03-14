@@ -40,8 +40,8 @@ function formatTextAttributeValue(value: unknown): string {
  */
 function formatTextAttributes(attributes?: LogContext['attributes']): string {
 	const mergedAttributes = {
-		...(Logger.globalAttributes ?? {}),
-		...(attributes ?? {})
+		...Logger.globalAttributes,
+		...attributes
 	};
 	const entries = Object.entries(mergedAttributes);
 

@@ -25,10 +25,11 @@ const DEFAULT_TIMER_GC_INTERVAL = 60000;
  * Logger module class.
  */
 export class Logger implements LoggerMethods {
-	static globalAttributes?: LogContext['attributes'];
+	static globalAttributes: LogContext['attributes'] = {};
 
 	/**
 	 * Sets global attributes to be included in every log output.
+	 * Subsequent calls replace any previously set global attributes rather than merging them.
 	 *
 	 * @param   data  Attributes shared by all logger instances.
 	 */
@@ -84,8 +85,8 @@ export class Logger implements LoggerMethods {
 	 * @param   opts.client         Underlying abstract logger to override console.
 	 * @param   opts.noServer       Disable the embedded http server for runtime actions.
 	 * @param   opts.attributes     Attributes to add extra fields with fixed value.
-	 * @param   opts.allowExit     Allow process to exit naturally (uses server.unref()).
-	 * @param   opts.timerTTL      TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
+	 * @param   opts.allowExit      Allow process to exit naturally (uses server.unref()).
+	 * @param   opts.timerTTL       TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
 	 */
 	public constructor(
 		opts: {
