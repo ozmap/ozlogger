@@ -24,7 +24,7 @@ export function getLogWrapper<TScope extends Logger>(
 ): LogWrapper {
 	switch (output) {
 		case 'text':
-			return text.call(this, logger, tag);
+			return text.call(this, logger, tag, attributes);
 
 		case 'json':
 			return json.call(this, logger, tag, attributes);

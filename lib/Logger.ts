@@ -25,13 +25,14 @@ const DEFAULT_TIMER_GC_INTERVAL = 60000;
  * Logger module class.
  */
 export class Logger implements LoggerMethods {
-	static globalAttributes: Record<string, string | number>;
+	static globalAttributes?: LogContext['attributes'];
 
 	/**
-	 * Global attributes to show in every log
-	 * @param data object containing attributes, needs to be k = string, v = string
+	 * Sets global attributes to be included in every log output.
+	 *
+	 * @param   data  Attributes shared by all logger instances.
 	 */
-	static setGlobalAttributes(data: Record<string, string | number>): void {
+	static setGlobalAttributes(data: LogContext['attributes']): void {
 		Logger.globalAttributes = data;
 	}
 
@@ -83,8 +84,8 @@ export class Logger implements LoggerMethods {
 	 * @param   opts.client         Underlying abstract logger to override console.
 	 * @param   opts.noServer       Disable the embedded http server for runtime actions.
 	 * @param   opts.attributes     Attributes to add extra fields with fixed value.
-	 * @param   opts.allowExit   Allow process to exit naturally (uses server.unref()).
-	 * @param   opts.timerTTL    TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
+	 * @param   opts.allowExit     Allow process to exit naturally (uses server.unref()).
+	 * @param   opts.timerTTL      TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
 	 */
 	public constructor(
 		opts: {
@@ -489,24 +490,21 @@ export class Logger implements LoggerMethods {
 /**
  * Factory function to create tagged Logger instance.
  *
- * @param   tag            Tag with which the logger is being created.
- * @param   opts		   Optional attributes to add context to logger
- * @param   opts.client    Underlying abstract logger to override console.
- * @param   opts.noServer  Disable the embedded http server for runtime actions.
- * @param   opts.attributes Adds fields with static value for every log
- * @param   tag             Tag with which the logger is being created.
- * @param   opts            Optional attributes to add context to logger
- * @param   opts.client     Underlying abstract logger to override console.
- * @param   opts.noServer   Disable the embedded http server for runtime actions.
- * @param   opts.attributes Adds fields with static value for every log
- * @returns Logger instance
+ * @param   tag               Tag with which the logger is being created.
+ * @param   opts              Optional logger configuration.
+ * @param   opts.client       Underlying abstract logger to override console.
+ * @param   opts.noServer     Disable the embedded http server for runtime actions.
+ * @param   opts.attributes   Adds fixed fields to every log emitted by the instance.
+ * @param   opts.allowExit    Allow process to exit naturally (uses server.unref()).
+ * @param   opts.timerTTL     TTL for timers in ms (default: 10min). Set to 0 to disable cleanup.
+ * @returns Logger instance.
  */
 export function createLogger(
 	tag?: string,
 	opts: {
 		client?: AbstractLogger;
 		noServer?: boolean;
-		attributes?: Record<string, string | number>;
+		attributes?: LogContext['attributes'];
 		allowExit?: boolean;
 		timerTTL?: number;
 	} = {}

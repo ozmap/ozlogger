@@ -19,6 +19,7 @@ describe('JSON Formatter', () => {
 	afterEach(() => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
+		Logger.globalAttributes = undefined;
 	});
 
 	test('should output valid JSON', () => {
@@ -107,6 +108,33 @@ describe('JSON Formatter', () => {
 		expect(output.body['1']).toBe(false);
 	});
 
+	test('should merge global and instance attributes in JSON output', () => {
+		Logger.setGlobalAttributes({
+			tenant: 'ozmap',
+			shared: 'global',
+			featureFlag: true
+		});
+
+		logger = createLogger('JSON-ATTR-TEST', {
+			client: mockLogger,
+			noServer: true,
+			attributes: {
+				job: 'history',
+				shared: 'local',
+				metadata: { scope: 'instance' }
+			}
+		});
+
+		logger.audit('payload');
+
+		const output = JSON.parse(logged[0]);
+		expect(output.tenant).toBe('ozmap');
+		expect(output.job).toBe('history');
+		expect(output.featureFlag).toBe(true);
+		expect(output.shared).toBe('local');
+		expect(output.metadata).toEqual({ scope: 'instance' });
+	});
+
 	describe('Log levels', () => {
 		test('debug level', () => {
 			logger.debug('debug msg');
@@ -163,6 +191,7 @@ describe('Text Formatter', () => {
 	afterEach(() => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
+		Logger.globalAttributes = undefined;
 	});
 
 	test('should output text format', () => {
@@ -188,6 +217,22 @@ describe('Text Formatter', () => {
 		logger.info('one', 'two', 'three');
 		expect(logged[0]).toContain('one two three');
 	});
+
+	test('should include global and instance attributes in text output', () => {
+		Logger.setGlobalAttributes({ tenant: 'ozmap', shared: 'global' });
+		logger = createLogger('TEXT-ATTR-TEST', {
+			client: mockLogger,
+			noServer: true,
+			attributes: { job: 'history', shared: 'local', enabled: true }
+		});
+
+		logger.info('test message');
+
+		expect(logged[0]).toContain('tenant=ozmap');
+		expect(logged[0]).toContain('job=history');
+		expect(logged[0]).toContain('shared=local');
+		expect(logged[0]).toContain('enabled=true');
+	});
 });
 
 describe('Text Formatter with datetime', () => {
@@ -210,6 +255,7 @@ describe('Text Formatter with datetime', () => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
 		delete process.env.OZLOGGER_DATETIME;
+		Logger.globalAttributes = undefined;
 	});
 
 	test('should include timestamp in text output', () => {
@@ -239,6 +285,7 @@ describe('JSON Formatter with datetime', () => {
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
 		delete process.env.OZLOGGER_DATETIME;
+		Logger.globalAttributes = undefined;
 	});
 
 	test('should include timestamp in JSON output', () => {
@@ -304,6 +351,7 @@ describe('Format fallback behavior', () => {
 
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
+		Logger.globalAttributes = undefined;
 	});
 });
 
@@ -336,5 +384,6 @@ describe('JSON Formatter error handling', () => {
 
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
+		Logger.globalAttributes = undefined;
 	});
 });
