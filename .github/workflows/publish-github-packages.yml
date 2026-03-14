@@ -5,7 +5,6 @@ on:
     branches:
       - master
       - develop
-      - development
   pull_request:
     types:
       - opened
@@ -63,11 +62,12 @@ jobs:
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           BASE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
 
           if [ "$EVENT_NAME" = "pull_request" ]; then
             DIST_TAG=test
             PACKAGE_VERSION="${BASE_VERSION}-pr.${PR_NUMBER}.${RUN_NUMBER}.${RUN_ATTEMPT}"
-          elif [ "$REF_NAME" = "develop" ] || [ "$REF_NAME" = "development" ]; then
+          elif [ "$REF_NAME" = "develop" ]; then
             DIST_TAG=beta
             PACKAGE_VERSION="${BASE_VERSION}-beta.${RUN_NUMBER}.${RUN_ATTEMPT}"
           elif [ "$REF_NAME" = "master" ]; then
@@ -79,6 +79,7 @@ jobs:
           fi
 
           echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
           echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Stamp package version for pre-release channels
@@ -91,7 +92,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if npm view @ozmap/logger@"${{ steps.publish_meta.outputs.package_version }}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+          if npm view "${{ steps.publish_meta.outputs.package_name }}@${{ steps.publish_meta.outputs.package_version }}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
