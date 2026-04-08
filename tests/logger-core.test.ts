@@ -37,10 +37,12 @@ describe('Logger Core', () => {
 			expect(logged[0]).toContain('ms');
 		});
 
-		test('should throw when timer ID already exists', () => {
+		test('should warn when timer ID already exists', () => {
 			logger.time('duplicate');
-			expect(() => logger.time('duplicate')).toThrow(
-				'Identifier duplicate is in use'
+			logger.time('duplicate');
+			expect(logged.length).toBe(1);
+			expect(logged[0]).toContain(
+				'Identifier duplicate is already in use'
 			);
 		});
 
