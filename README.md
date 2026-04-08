@@ -186,6 +186,8 @@ Ou adicione no `.npmrc` (útil para CI):
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
+**Script automático:** para configurar autenticação local e Docker de uma vez, veja o [Guia de Autenticação no GitHub Packages](docs/GITHUB-PACKAGES-AUTH.md). O script configura `~/.npmrc` e gera `.env.github-packages` para uso com `docker compose`.
+
 ### 3. Instalar o pacote
 
 ```bash
@@ -913,6 +915,37 @@ npm install @ozmap/logger
 
 Versiones `alpha` e `beta` **nunca** são instaladas automaticamente — apenas com `@alpha`, `@beta` ou a versão exata. Projetos em produção com versão travada no lockfile não são impactados por nenhuma release.
 
+### Autorizando repositórios da organização no CI
+
+Quando o CI de outro repositório (ex: `ozmap/api`) precisa instalar `@ozmap/logger`, o `GITHUB_TOKEN` daquele repositório **não tem acesso ao pacote por padrão**.
+
+Para autorizar sem criar tokens manuais, vá até as configurações do pacote:
+
+**https://github.com/orgs/ozmap/packages/npm/logger/settings**
+
+Na seção **"Manage Actions access"**, clique em **"Add Repository"** e selecione os repositórios que devem ter acesso. Após isso, o `GITHUB_TOKEN` automático do Actions é suficiente:
+
+```yaml
+# No CI do repositório consumidor
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@ozmap'
+      - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+> Sem secrets extras para criar, rotacionar ou gerenciar. Veja mais detalhes no [Guia de Autenticação](docs/GITHUB-PACKAGES-AUTH.md) e na [documentação oficial do GitHub](https://docs.github.com/pt/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
+
 ---
 
 ## Contribuindo
@@ -968,6 +1001,7 @@ Para informações mais detalhadas, consulte:
 
 - [Quick Guide](docs/QUICK-GUIDE.md) - Guia rápido com exemplos práticos
 - [Integração OpenTelemetry](docs/OTEL-INTEGRATION.md) - Distributed tracing com Express, propagação de traceId/spanId do browser, e uso seguro em requests concorrentes
+- [Autenticação GitHub Packages](docs/GITHUB-PACKAGES-AUTH.md) - Script de autenticação, uso com Docker, e autorização de repositórios
 - [Arquitetura](docs/ARCHITECTURE.md) - Detalhes da arquitetura interna
 - [Análise: Sistema HTTP](docs/ANALYSIS-HTTP-SYSTEM.md) - Análise profunda do servidor HTTP
 - [Análise: Process Hang](docs/ANALYSIS-PROCESS-HANG.md) - Análise técnica do problema de processo pendurado
