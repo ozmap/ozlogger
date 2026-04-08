@@ -11,6 +11,12 @@ on:
             - master
             - main
             - develop
+    release:
+        types: [published]
+
+permissions:
+    contents: read
+    packages: write
 
 jobs:
     test:
@@ -49,3 +55,52 @@ jobs:
                   name: coverage-report
                   path: coverage/
                   retention-days: 7
+
+    publish:
+        needs: test
+        if: github.event_name == 'release'
+        runs-on: ubuntu-latest
+        name: Publish to GitHub Packages
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  registry-url: 'https://npm.pkg.github.com'
+                  scope: '@ozmap'
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: 8
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Build
+              run: pnpm run build
+
+            - name: Set version from release tag
+              run: |
+                  TAG="${{ github.event.release.tag_name }}"
+                  VERSION="${TAG#v}"
+                  npm version "$VERSION" --no-git-tag-version
+
+            - name: Determine dist-tag
+              id: dist-tag
+              run: |
+                  TAG="${{ github.event.release.tag_name }}"
+                  if echo "$TAG" | grep -qiE '(alpha|beta)'; then
+                    echo "tag=$(echo "$TAG" | grep -oiE '(alpha|beta)' | head -1 | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "tag=latest" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Publish package
+              run: npm publish --tag ${{ steps.dist-tag.outputs.tag }}
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
