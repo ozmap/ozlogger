@@ -113,7 +113,7 @@ A saída JSON do OZLogger é compatível com:
 - [Formatos de Saída](#formatos-de-saída)
 - [Servidor HTTP Embarcado](#servidor-http-embarcado)
 - [Contexto e Tracing](#contexto-e-tracing)
-- [Integração OpenTelemetry](#integração-opentelemetry)
+- [Integração OpenTelemetry](#opentelemetry-integration)
 - [Utilitários](#utilitários)
 - [Variáveis de Ambiente](#variáveis-de-ambiente)
 - [Exemplos de Uso](#exemplos-de-uso)
@@ -183,7 +183,7 @@ Ou adicione no `.npmrc` (útil para CI):
 
 ```ini
 @ozmap:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
 **Script automático:** para configurar autenticação local e Docker de uma vez, veja o [Guia de Autenticação no GitHub Packages](docs/GITHUB-PACKAGES-AUTH.md). O script configura `~/.npmrc` e gera `.env.github-packages` para uso com `docker compose`.

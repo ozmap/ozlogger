@@ -106,7 +106,7 @@ import express from 'express';
 import { createLogger } from '@ozmap/logger';
 
 const app = express();
-const logger = createLogger({ tag: 'API' });
+const logger = createLogger('API');
 
 app.get('/orders/:id', (req, res) => {
   // Neste ponto, o OTel SDK já:
@@ -223,7 +223,7 @@ Este é o ponto mais importante para quem usa OZLogger em aplicações com múlt
 `withContext()` altera `this.context` diretamente na instância do logger. O contexto **não** é isolado por request — ele pertence à instância:
 
 ```typescript
-const logger = createLogger({ tag: 'API' });
+const logger = createLogger('API');
 
 // Request A chega às 10:00:00.000
 logger.withContext({ traceId: 'aaa', spanId: '111' });
@@ -248,7 +248,7 @@ import express from 'express';
 import { createLogger } from '@ozmap/logger';
 
 const app = express();
-const logger = createLogger({ tag: 'API' }); // Uma única instância
+const logger = createLogger('API'); // Uma única instância
 
 app.get('/orders/:id', async (req, res) => {
   // OTel SDK criou um span para esta request com traceId do browser
@@ -309,7 +309,7 @@ const app = express();
 
 app.use((req, res, next) => {
   // Cria uma instância exclusiva para esta request
-  req.logger = createLogger({ tag: 'API', noServer: true });
+  req.logger = createLogger('API', { noServer: true });
 
   const traceId = req.headers['x-trace-id'] as string;
   const spanId = req.headers['x-span-id'] as string;
@@ -351,7 +351,7 @@ import express from 'express';
 import { createLogger } from '@ozmap/logger';
 
 const app = express();
-const logger = createLogger({ tag: 'API' });
+const logger = createLogger('API');
 
 // Store para contexto por request
 const requestStore = new AsyncLocalStorage<{ traceId: string; spanId: string }>();
@@ -415,7 +415,7 @@ Para cenários onde não há concorrência (scripts, CLIs, workers que processam
 ```typescript
 import { createLogger } from '@ozmap/logger';
 
-const logger = createLogger({ tag: 'WORKER' });
+const logger = createLogger('WORKER');
 
 async function processJob(job: Job) {
   // Apenas um job por vez — sem concorrência
@@ -431,7 +431,7 @@ Para **testes**, `withContext()` também é a forma correta de injetar contexto:
 
 ```typescript
 test('should include traceId in log output', () => {
-  const logger = createLogger({ tag: 'TEST', noServer: true });
+  const logger = createLogger('TEST', { noServer: true });
   logger.withContext({ traceId: 'test-trace-123', spanId: 'test-span-456' });
 
   const ctx = logger.getContext();

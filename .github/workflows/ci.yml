@@ -16,7 +16,6 @@ on:
 
 permissions:
     contents: read
-    packages: write
 
 jobs:
     test:
@@ -61,6 +60,9 @@ jobs:
         if: github.event_name == 'release'
         runs-on: ubuntu-latest
         name: Publish to GitHub Packages
+        permissions:
+            contents: read
+            packages: write
 
         steps:
             - name: Checkout code
@@ -79,7 +81,7 @@ jobs:
                   version: 8
 
             - name: Install dependencies
-              run: pnpm install
+              run: pnpm install --frozen-lockfile
 
             - name: Build
               run: pnpm run build
