@@ -171,7 +171,7 @@ Crie ou edite o arquivo `.npmrc` na raiz do projeto que consome o pacote:
 
 ### 2. Autenticar no GitHub Packages
 
-Gere um [Personal Access Token (classic)](https://github.com/settings/tokens) com o scope `read:packages` e configure:
+Se o pacote estiver em repositório privado, use um [Personal Access Token (classic)](https://github.com/settings/tokens) com `read:packages` e `repo`. Como alternativa, use um token fine-grained com acesso de leitura ao repositório que publica o pacote e permissão `Packages: Read`. Depois configure:
 
 ```bash
 npm login --scope=@ozmap --registry=https://npm.pkg.github.com

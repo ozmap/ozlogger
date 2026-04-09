@@ -53,6 +53,7 @@ set -euo pipefail
 ORG_SCOPE="@ozmap"                          # Scope da org no registry
 REGISTRY_URL="https://npm.pkg.github.com"   # Registry do GitHub Packages
 NPMRC_PATH="${HOME}/.npmrc"                  # Arquivo global de configuração npm
+NPMRC_BACKUP_PATH="${NPMRC_PATH}.bak.$(date +%Y%m%d%H%M%S)"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_ENV_FILE="${PROJECT_ROOT}/.env.github-packages"  # Arquivo de env para Docker
 GH_HOST="github.com"
@@ -128,9 +129,15 @@ if [[ -z "${TOKEN}" ]]; then
 fi
 
 # --- Configurar ~/.npmrc (ambiente local) ------------------------------------
-# Remove entradas antigas do @ozmap e do GitHub Packages para evitar duplicatas,
-# depois adiciona as novas entradas com o token obtido.
+# Faz backup do ~/.npmrc antes de substituir as entradas do @ozmap
+# e o token do GitHub Packages, evitando perda acidental de configuração.
 echo "==> Configurando ${NPMRC_PATH} (ambiente local)..."
+
+if [[ -f "${NPMRC_PATH}" ]]; then
+  cp "${NPMRC_PATH}" "${NPMRC_BACKUP_PATH}"
+  echo "==> Backup criado em ${NPMRC_BACKUP_PATH}"
+fi
+
 touch "${NPMRC_PATH}"
 
 TMP_NPMRC="$(mktemp)"
@@ -162,8 +169,10 @@ chmod 600 "${NPMRC_PATH}"
 # E no Dockerfile:
 #
 #   ARG NPM_TOKEN
-#   RUN echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
-#   RUN npm install
+#   RUN corepack enable && corepack prepare pnpm@9 --activate
+#   RUN printf "@ozmap:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n" "${NPM_TOKEN}" > ~/.npmrc \
+#      && pnpm install --frozen-lockfile --prod \
+#      && rm -f ~/.npmrc
 echo "==> Gerando ${LOCAL_ENV_FILE} (ambiente Docker)..."
 cat > "${LOCAL_ENV_FILE}" <<EOF
 NPM_TOKEN=${TOKEN}
@@ -201,15 +210,13 @@ WORKDIR /app
 # Recebe o token como build arg (não fica na imagem final se usado em multi-stage)
 ARG NPM_TOKEN
 
-# Configura o registry e o token para o npm install
-RUN echo "@ozmap:registry=https://npm.pkg.github.com" >> ~/.npmrc && \
-    echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+# Configura o registry e o token para o pnpm install
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 COPY package.json pnpm-lock.yaml ./
-RUN npm install --production
-
-# Remove o .npmrc com o token após o install
-RUN rm -f ~/.npmrc
+RUN printf "@ozmap:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n" "${NPM_TOKEN}" > ~/.npmrc && \
+  pnpm install --frozen-lockfile --prod && \
+  rm -f ~/.npmrc
 
 COPY . .
 CMD ["node", "dist/index.js"]

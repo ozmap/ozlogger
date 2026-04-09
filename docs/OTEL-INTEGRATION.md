@@ -341,59 +341,65 @@ app.get('/orders/:id', async (req, res) => {
 - Não há isolamento automático para funções chamadas fora do middleware (services, repositories)
 - Você precisa passar `req.logger` para todas as camadas que fazem log
 
-### Alternativa sem OTel SDK: `withContext()` com `AsyncLocalStorage` manual
+### Alternativa sem OTel SDK: `AsyncLocalStorage` manual + logger por request
 
-Se criar instância por request é inviável (ex: logger usado em services que não recebem `req`), você pode usar `AsyncLocalStorage` para isolar o contexto e uma instância compartilhada:
+Se criar instância por request é inviável do ponto de vista de passagem de dependência (ex: services não recebem `req`), você ainda pode usar `AsyncLocalStorage` para recuperar o logger atual sem passar `req` por todas as camadas. O ponto importante é: o store deve guardar um **logger por request**, não apenas `traceId/spanId`, porque `withContext()` muta a instância.
 
 ```typescript
 import { AsyncLocalStorage } from 'node:async_hooks';
 import express from 'express';
-import { createLogger } from '@ozmap/logger';
+import { createLogger, Logger } from '@ozmap/logger';
 
 const app = express();
-const logger = createLogger('API');
+const appLogger = createLogger('API');
+const requestStore = new AsyncLocalStorage<Logger>();
 
-// Store para contexto por request
-const requestStore = new AsyncLocalStorage<{ traceId: string; spanId: string }>();
-
-// Middleware que cria o escopo async isolado
-app.use((req, res, next) => {
-  const traceId = req.headers['x-trace-id'] as string || '';
-  const spanId = req.headers['x-span-id'] as string || '';
-
-  requestStore.run({ traceId, spanId }, () => {
-    next();
-  });
-});
-
-// Helper para fazer log com contexto da request atual
-function log(level: 'info' | 'debug' | 'warn' | 'error' | 'audit', ...args: unknown[]) {
-  const ctx = requestStore.getStore();
-  if (ctx) {
-    logger.withContext({ traceId: ctx.traceId, spanId: ctx.spanId });
-  }
-  logger[level](...args);
+function currentLogger(): Logger {
+  return requestStore.getStore() ?? appLogger;
 }
+
+app.use((req, res, next) => {
+  const traceId = (req.headers['x-trace-id'] as string) || '';
+  const spanId = (req.headers['x-span-id'] as string) || '';
+  const requestLogger = createLogger('API', { noServer: true }).withContext({
+    traceId,
+    spanId
+  });
+
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    void requestLogger.stop().catch(() => {});
+  };
+
+  res.once('finish', cleanup);
+  res.once('close', cleanup);
+
+  requestStore.run(requestLogger, () => next());
+});
 
 // Uso nas rotas
 app.get('/orders/:id', async (req, res) => {
-  log('info', 'Início do processamento');
+  currentLogger().info('Início do processamento');
 
   const order = await orderService.find(req.params.id);
 
-  log('info', 'Pedido encontrado', order.id);
+  currentLogger().info('Pedido encontrado', order.id);
   res.json(order);
 });
 
 // Service que não recebe req — funciona porque AsyncLocalStorage propaga pelo async chain
 const orderService = {
   async find(id: string) {
-    log('debug', 'Buscando pedido no banco', id);
+    currentLogger().debug('Buscando pedido no banco', id);
     // ... query no banco
     return { id, total: 99.90 };
   }
 };
 ```
+
+Essa abordagem evita vazamento de contexto entre requests concorrentes, mas continua mais complexa do que usar o OTel SDK. O `appLogger` compartilhado fica restrito a logs sem contexto de request, enquanto cada request recebe sua própria instância e faz `stop()` no fim para liberar handlers internos.
 
 > **Essa abordagem reimplementa parte do que o OTel SDK faz.** Se você chegou nesse ponto, considere usar OTel SDK — é mais robusto, testado, e o OZLogger já integra com ele nativamente.
 
@@ -403,7 +409,7 @@ const orderService = {
 |-----------|-----------|-------------|---------|-------------|
 | **OTel SDK** | Automático (AsyncLocalStorage) | Configurar `tracing.ts` | ~zero em runtime | ✅ Sim |
 | **Instância por request** | Manual (1 logger por req) | Passar logger por todas as camadas | Criação de objetos por request | Para apps simples sem OTel |
-| **AsyncLocalStorage manual** | Manual (Store + helper) | Criar store, wrapper, middleware | Mínimo | Último recurso |
+| **AsyncLocalStorage manual + logger por request** | Manual (Store + logger por request) | Criar store, middleware e cleanup | Mínimo | Último recurso |
 | **`withContext()` em instância compartilhada** | ❌ Nenhum | Nenhuma | Nenhum | ❌ Nunca em apps concorrentes |
 
 ---
