@@ -28,7 +28,9 @@ describe('OZLogger factory test suite.', () => {
 
 	test('logger must have audit method.', () => {
 		expect(typeof logger['audit'] === 'function').toBe(true);
-		expect(() => logger.audit('audit message log')).not.toThrow(Error);
+		expect(() =>
+			logger.audit({ message: 'audit message log' })
+		).not.toThrow(Error);
 		logger.time('test');
 		expect(() => logger.audit.timeEnd('test')).not.toThrow(Error);
 	});

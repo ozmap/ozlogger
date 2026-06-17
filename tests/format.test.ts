@@ -123,7 +123,7 @@ describe('JSON Formatter', () => {
 		});
 
 		test('audit level', () => {
-			logger.audit('audit msg');
+			logger.audit({ msg: 'audit msg' });
 			const output = JSON.parse(logged[0]);
 			expect(output.severityText).toBe('AUDIT');
 			expect(output.severityNumber).toBe(12);

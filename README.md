@@ -98,6 +98,10 @@ A saída JSON do OZLogger é compatível com:
 | AWS CloudWatch | Via CloudWatch Agent |
 | Google Cloud Logging | Via Logging Agent |
 | Grafana Loki | Via Promtail |
+| VictoriaLogs | Direta via stdout (alvo principal do nível `audit`) |
+| SigNoz | Via OpenTelemetry Collector |
+
+> Para bases indexadas por labels (VictoriaLogs, Loki, SigNoz), veja as boas práticas em [Auditoria e bases de logs](#auditoria-e-bases-de-logs-victorialogs--loki--signoz) antes de modelar o que vai no `audit`.
 
 ---
 
@@ -391,12 +395,23 @@ Níveis deprecados (serão removidos em 0.3.x):
 ### Métodos de Logging
 
 ```typescript
-logger.debug(...args: unknown[]): void  // Nível DEBUG
-logger.info(...args: unknown[]): void   // Nível INFO
-logger.audit(...args: unknown[]): void  // Nível AUDIT
-logger.warn(...args: unknown[]): void   // Nível WARNING
-logger.error(...args: unknown[]): void  // Nível ERROR
+logger.debug(...args: unknown[]): void   // Nível DEBUG
+logger.info(...args: unknown[]): void    // Nível INFO
+logger.audit(data: unknown): void        // Nível AUDIT — apenas UM argumento (qualquer tipo)
+logger.warn(...args: unknown[]): void    // Nível WARNING
+logger.error(...args: unknown[]): void   // Nível ERROR
 ```
+
+> **Sobre o `audit`:** diferente dos demais métodos (que herdaram o estilo `console.log(a, b, c)`), o `audit()` é o ponto de entrada para o **VictoriaLogs** e aceita **exatamente um argumento** — de qualquer tipo (objeto, string, número, etc.), escrito como está no stdout para ingestão. Ele não faz parsing nem trata múltiplos argumentos. Chamar `audit()` com um número de argumentos diferente de um **lança um erro** (é erro de programação, deve aparecer em dev/test). Um body acima do limite seguro, ou que não seja serializável, é **descartado com um log de ERROR**, sem derrubar o processo. Para bases indexadas, prefira enviar um objeto com labels bem definidos (veja abaixo).
+
+### Auditoria e bases de logs (VictoriaLogs / Loki / SigNoz)
+
+O `audit` foi pensado para alimentar bases de logs indexadas (VictoriaLogs, Loki, SigNoz). Para que a indexação e os dashboards funcionem bem, siga estas práticas:
+
+- **Use labels/campos bem definidos e estáveis.** Essas bases indexam por labels/campos. Prefira um conjunto pequeno e consistente de chaves (ex.: `action`, `entity`, `entityId`, `userId`, `result`) em vez de chaves dinâmicas ou ilimitadas. Labels de alta cardinalidade (um valor diferente de chave por requisição) degradam a indexação e o desempenho das consultas.
+- **Não inclua dados que já são gerados automaticamente.** Não coloque `timestamp`, `traceId`, `spanId`, `pid`, `ppid`, `severity`/`level` nem o `tag` dentro do objeto do `audit`. Esses campos já são adicionados pelo próprio logger (contexto, severidade e timestamp) e/ou pelo VictoriaLogs no momento da ingestão. Duplicá-los gera conflito, ruído e ocupa espaço à toa.
+- **Mantenha o body pequeno.** O VictoriaLogs descarta linhas acima de `-insert.maxLineSizeBytes` (256KB por padrão) e trata registros próximos de 2MB de forma ineficiente. O OZLogger limita o body do `audit` a **256KB** (`DEFAULT_AUDIT_MAX_BYTES`); acima disso o registro é descartado e um ERROR é logado. Audite apenas o que é relevante para a trilha de auditoria — não envie payloads inteiros de requisição/resposta.
+- **Envie dados estruturados, não strings concatenadas.** Como o destino indexa por campos, prefira `logger.audit({ action: 'login', userId: 42 })` a `logger.audit({ msg: 'login user 42' })`.
 
 ### Métodos de Timing
 

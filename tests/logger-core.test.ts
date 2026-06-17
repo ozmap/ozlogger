@@ -188,7 +188,7 @@ describe('Logger Core', () => {
 			logged = [];
 			logger.debug('no');
 			logger.info('no');
-			logger.audit('no');
+			logger.audit({ m: 'no' });
 			logger.warn('no');
 			expect(logged.length).toBe(0);
 			logger.error('yes');
@@ -202,7 +202,7 @@ describe('Logger Core', () => {
 			logged = [];
 			logger.debug('no');
 			logger.info('no');
-			logger.audit('no');
+			logger.audit({ m: 'no' });
 			logger.warn('no');
 			logger.error('no');
 			expect(logged.length).toBe(0);
@@ -215,7 +215,7 @@ describe('Logger Core', () => {
 			logger.debug('no'); // debug < audit
 			logger.info('no'); // info < audit
 			expect(logged.length).toBe(0);
-			logger.audit('yes');
+			logger.audit({ m: 'yes' });
 			expect(logged.length).toBe(1);
 		});
 	});
