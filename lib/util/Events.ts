@@ -25,7 +25,17 @@ function attachProcessMessageListener(): void {
 		if (!handlers?.size) return;
 
 		for (const registered of handlers) {
-			registered.handler.call(registered.context, data);
+			// A logging event handler must never crash the host process.
+			// Isolate each handler so a throw does not become an uncaught
+			// exception on 'message' nor stop the remaining handlers.
+			try {
+				registered.handler.call(registered.context, data);
+			} catch (e) {
+				console.error(
+					'[OZLogger] event handler threw and was ignored:',
+					e
+				);
+			}
 		}
 	};
 

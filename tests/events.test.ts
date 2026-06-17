@@ -144,6 +144,42 @@ describe('Events', () => {
 			// Calling twice should be a no-op
 			unregister();
 		});
+
+		test('should not crash the process when a handler throws and should still run the others', () => {
+			const ctx = {} as unknown as Logger;
+			const throwing = jest.fn(() => {
+				throw new Error('handler boom');
+			});
+			const other = jest.fn();
+
+			// Silence the expected console.error from the isolated handler.
+			const errSpy = jest
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
+
+			const unregisterThrowing = registerEvent(
+				ctx,
+				'guarded.event',
+				throwing
+			);
+			const unregisterOther = registerEvent(ctx, 'guarded.event', other);
+
+			expect(() =>
+				process.emit(
+					'message' as NodeJS.Signals,
+					{ event: 'guarded.event' } as unknown as NodeJS.Signals
+				)
+			).not.toThrow();
+
+			expect(throwing).toHaveBeenCalledTimes(1);
+			// A throwing handler must not prevent the remaining ones from running.
+			expect(other).toHaveBeenCalledTimes(1);
+			expect(errSpy).toHaveBeenCalledTimes(1);
+
+			errSpy.mockRestore();
+			unregisterThrowing();
+			unregisterOther();
+		});
 	});
 });
 
