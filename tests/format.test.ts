@@ -1,4 +1,11 @@
-import { expect, describe, test, beforeEach, afterEach } from '@jest/globals';
+import {
+	expect,
+	describe,
+	test,
+	beforeEach,
+	afterEach,
+	jest
+} from '@jest/globals';
 import createLogger, { Logger } from '../lib';
 
 describe('JSON Formatter', () => {
@@ -336,5 +343,56 @@ describe('JSON Formatter error handling', () => {
 
 		delete process.env.OZLOGGER_OUTPUT;
 		delete process.env.OZLOGGER_LEVEL;
+	});
+});
+
+describe('Log call must never throw into the caller', () => {
+	const failingClient = {
+		log: () => {
+			throw new Error('client boom');
+		}
+	};
+
+	afterEach(() => {
+		delete process.env.OZLOGGER_OUTPUT;
+		delete process.env.OZLOGGER_LEVEL;
+	});
+
+	test('json: a throwing client does not propagate to the caller', () => {
+		process.env.OZLOGGER_OUTPUT = 'json';
+		process.env.OZLOGGER_LEVEL = 'debug';
+
+		const logger = createLogger('JSON-THROW', {
+			client: failingClient,
+			noServer: true
+		});
+
+		const errSpy = jest
+			.spyOn(console, 'error')
+			.mockImplementation(() => {});
+
+		expect(() => logger.info('boom')).not.toThrow();
+		expect(errSpy).toHaveBeenCalledTimes(1);
+
+		errSpy.mockRestore();
+	});
+
+	test('text: a throwing client does not propagate to the caller', () => {
+		process.env.OZLOGGER_OUTPUT = 'text';
+		process.env.OZLOGGER_LEVEL = 'debug';
+
+		const logger = createLogger('TEXT-THROW', {
+			client: failingClient,
+			noServer: true
+		});
+
+		const errSpy = jest
+			.spyOn(console, 'error')
+			.mockImplementation(() => {});
+
+		expect(() => logger.info('boom')).not.toThrow();
+		expect(errSpy).toHaveBeenCalledTimes(1);
+
+		errSpy.mockRestore();
 	});
 });
