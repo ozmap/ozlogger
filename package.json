@@ -1,6 +1,6 @@
 {
 	"name": "@ozmap/logger",
-	"version": "0.2.8",
+	"version": "0.3.0",
 	"description": "DevOZ logger module.",
 	"main": "dist/index.js",
 	"scripts": {
@@ -33,7 +33,11 @@
 		"url": "https://github.com/ozmap/ozlogger/issues"
 	},
 	"homepage": "https://github.com/ozmap/ozlogger#readme",
+	"publishConfig": {
+		"registry": "https://npm.pkg.github.com"
+	},
 	"devDependencies": {
+		"@jest/globals": "^30.2.0",
 		"@tsconfig/node20": "^20.1.2",
 		"@types/jest": "^29.5.12",
 		"@types/node": "^20.11.16",

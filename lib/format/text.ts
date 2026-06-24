@@ -19,9 +19,16 @@ export function text<TScope extends Logger>(
 	const now = datetime<string>();
 	const paint = colorized();
 
-	return async (level: LevelTag, ...args: unknown[]) => {
-		const data = args.map((arg) => stringify(arg)).join(' ');
+	return (level: LevelTag, ...args: unknown[]) => {
+		// A log call must never throw into the caller's business logic, so we
+		// isolate serialization and the underlying (possibly app-provided)
+		// client behind a try/catch.
+		try {
+			const data = args.map((arg) => stringify(arg)).join(' ');
 
-		logger.log(paint[level](`${now()}[${level}] ${tag ?? ''} ${data}`));
+			logger.log(paint[level](`${now()}[${level}] ${tag ?? ''} ${data}`));
+		} catch (e) {
+			console.error('[OZLogger] failed to emit log:', e);
+		}
 	};
 }

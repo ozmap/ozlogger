@@ -98,6 +98,10 @@ A saída JSON do OZLogger é compatível com:
 | AWS CloudWatch | Via CloudWatch Agent |
 | Google Cloud Logging | Via Logging Agent |
 | Grafana Loki | Via Promtail |
+| VictoriaLogs | Direta via stdout (alvo principal do nível `audit`) |
+| SigNoz | Via OpenTelemetry Collector |
+
+> Para bases indexadas por labels (VictoriaLogs, Loki, SigNoz), veja as boas práticas em [Auditoria e bases de logs](#auditoria-e-bases-de-logs-victorialogs--loki--signoz) antes de modelar o que vai no `audit`.
 
 ---
 
@@ -113,9 +117,11 @@ A saída JSON do OZLogger é compatível com:
 - [Formatos de Saída](#formatos-de-saída)
 - [Servidor HTTP Embarcado](#servidor-http-embarcado)
 - [Contexto e Tracing](#contexto-e-tracing)
+- [Integração OpenTelemetry](#opentelemetry-integration)
 - [Utilitários](#utilitários)
 - [Variáveis de Ambiente](#variáveis-de-ambiente)
 - [Exemplos de Uso](#exemplos-de-uso)
+- [Publicação e Releases](#publicação-e-releases)
 - [Desenvolvimento](#desenvolvimento)
 - [Testes](#testes)
 - [Contribuindo](#contribuindo)
@@ -157,14 +163,39 @@ A saída JSON do OZLogger é compatível com:
 
 ## Instalação
 
-```bash
-npm install @ozmap/logger
+O pacote é publicado no **GitHub Packages**. Para instalar, configure o registry do scope `@ozmap` e autentique-se:
+
+### 1. Configurar o registry
+
+Crie ou edite o arquivo `.npmrc` na raiz do projeto que consome o pacote:
+
+```ini
+@ozmap:registry=https://npm.pkg.github.com
 ```
 
-ou com Yarn:
+### 2. Autenticar no GitHub Packages
+
+Se o pacote estiver em repositório privado, use um [Personal Access Token (classic)](https://github.com/settings/tokens) com `read:packages` e `repo`. Como alternativa, use um token fine-grained com acesso de leitura ao repositório que publica o pacote e permissão `Packages: Read`. Depois configure:
 
 ```bash
-yarn add @ozmap/logger
+npm login --scope=@ozmap --registry=https://npm.pkg.github.com
+# Username: seu-usuario-github
+# Password: seu-token
+```
+
+Ou adicione no `.npmrc` (útil para CI):
+
+```ini
+@ozmap:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+**Script automático:** para configurar autenticação local e Docker de uma vez, veja o [Guia de Autenticação no GitHub Packages](docs/GITHUB-PACKAGES-AUTH.md). O script configura `~/.npmrc` e gera `.env.github-packages` para uso com `docker compose`.
+
+### 3. Instalar o pacote
+
+```bash
+npm install @ozmap/logger
 ```
 
 ou com pnpm:
@@ -364,12 +395,23 @@ Níveis deprecados (serão removidos em 0.3.x):
 ### Métodos de Logging
 
 ```typescript
-logger.debug(...args: unknown[]): void  // Nível DEBUG
-logger.info(...args: unknown[]): void   // Nível INFO
-logger.audit(...args: unknown[]): void  // Nível AUDIT
-logger.warn(...args: unknown[]): void   // Nível WARNING
-logger.error(...args: unknown[]): void  // Nível ERROR
+logger.debug(...args: unknown[]): void   // Nível DEBUG
+logger.info(...args: unknown[]): void    // Nível INFO
+logger.audit(data: unknown): void        // Nível AUDIT — apenas UM argumento (qualquer tipo)
+logger.warn(...args: unknown[]): void    // Nível WARNING
+logger.error(...args: unknown[]): void   // Nível ERROR
 ```
+
+> **Sobre o `audit`:** diferente dos demais métodos (que herdaram o estilo `console.log(a, b, c)`), o `audit()` é o ponto de entrada para o **VictoriaLogs** e aceita **exatamente um argumento** — de qualquer tipo (objeto, string, número, etc.), escrito como está no stdout para ingestão. Ele não faz parsing nem trata múltiplos argumentos. Chamar `audit()` com um número de argumentos diferente de um **lança um erro** (é erro de programação, deve aparecer em dev/test). Um body acima do limite seguro, ou que não seja serializável, é **descartado com um log de ERROR**, sem derrubar o processo. Para bases indexadas, prefira enviar um objeto com labels bem definidos (veja abaixo).
+
+### Auditoria e bases de logs (VictoriaLogs / Loki / SigNoz)
+
+O `audit` foi pensado para alimentar bases de logs indexadas (VictoriaLogs, Loki, SigNoz). Para que a indexação e os dashboards funcionem bem, siga estas práticas:
+
+- **Use labels/campos bem definidos e estáveis.** Essas bases indexam por labels/campos. Prefira um conjunto pequeno e consistente de chaves (ex.: `action`, `entity`, `entityId`, `userId`, `result`) em vez de chaves dinâmicas ou ilimitadas. Labels de alta cardinalidade (um valor diferente de chave por requisição) degradam a indexação e o desempenho das consultas.
+- **Não inclua dados que já são gerados automaticamente.** Não coloque `timestamp`, `traceId`, `spanId`, `pid`, `ppid`, `severity`/`level` nem o `tag` dentro do objeto do `audit`. Esses campos já são adicionados pelo próprio logger (contexto, severidade e timestamp) e/ou pelo VictoriaLogs no momento da ingestão. Duplicá-los gera conflito, ruído e ocupa espaço à toa.
+- **Mantenha o body pequeno.** O VictoriaLogs descarta linhas acima de `-insert.maxLineSizeBytes` (256KB por padrão) e trata registros próximos de 2MB de forma ineficiente. O OZLogger limita o body do `audit` a **256KB** (`DEFAULT_AUDIT_MAX_BYTES`); acima disso o registro é descartado e um ERROR é logado. Audite apenas o que é relevante para a trilha de auditoria — não envie payloads inteiros de requisição/resposta.
+- **Envie dados estruturados, não strings concatenadas.** Como o destino indexa por campos, prefira `logger.audit({ action: 'login', userId: 42 })` a `logger.audit({ msg: 'login user 42' })`.
 
 ### Métodos de Timing
 
@@ -482,6 +524,8 @@ import { trace, context } from '@opentelemetry/api';
 // quando existe um span ativo no contexto
 logger.info('Requisição processada');
 ```
+
+> Para um guia completo de integração com OTel em aplicações Express — incluindo propagação de traceId do browser, isolamento de contexto em requests concorrentes, e cenários sem SDK — consulte a **[Documentação de Integração OpenTelemetry](docs/OTEL-INTEGRATION.md)**.
 
 ### Contexto Manual
 
@@ -776,6 +820,149 @@ tests/
 
 ---
 
+## Publicação e Releases
+
+O OZLogger é distribuído via **GitHub Packages** (não via NPM público). A publicação é **automatizada** e acontece **exclusivamente via GitHub Releases** — nenhum `npm publish` manual é necessário ou permitido.
+
+### Por que GitHub Packages e não NPM
+
+| Aspecto | GitHub Packages | NPM público |
+|---------|----------------|-------------|
+| **Controle de acesso** | Integrado com permissões do repositório | Token separado, gestão manual |
+| **Autenticação** | `GITHUB_TOKEN` automático no CI | Secret `NPM_TOKEN` que expira e precisa ser rotacionado |
+| **Visibilidade** | Restrito à organização (ou público se desejado) | Sempre público |
+| **Proximidade** | Pacote vive junto ao código, PRs, issues e releases | Plataforma separada |
+| **Custo** | Incluído no plano GitHub | Gratuito, mas sem controle de acesso para orgs |
+
+Para um pacote interno de uma organização como o OZLogger, GitHub Packages simplifica toda a cadeia: o mesmo `GITHUB_TOKEN` que roda o CI publica o pacote, sem secrets extras para gerenciar.
+
+### Como funciona o fluxo de release
+
+```mermaid
+flowchart LR
+    Tag["Criar Release\nno GitHub"] --> CI["CI roda testes"]
+    CI --> |"Tests OK"| Publish["Publica no\nGitHub Packages"]
+    CI --> |"Tests FAIL"| Block["Publicação\nbloqueada"]
+```
+
+1. Um mantenedor cria uma **Release** no GitHub (via UI ou `gh release create`)
+2. O CI executa os testes com cobertura (≥ 95%)
+3. Se os testes passam, o pacote é compilado e publicado no GitHub Packages
+4. A **tag da release** determina a versão e o dist-tag
+
+### Tags e dist-tags: produção vs. pré-release
+
+| Tag da Release | Versão no pacote | dist-tag | `npm install @ozmap/logger` instala? |
+|----------------|-----------------|----------|--------------------------------------|
+| `v0.3.0` | `0.3.0` | `latest` | ✅ Sim — é a versão de produção |
+| `v0.3.1-alpha.1` | `0.3.1-alpha.1` | `alpha` | ❌ Não — precisa pedir explicitamente |
+| `v0.4.0-beta.2` | `0.4.0-beta.2` | `beta` | ❌ Não — precisa pedir explicitamente |
+
+**Regra:** se a tag contém `alpha` ou `beta` (case-insensitive), o pacote é publicado com o dist-tag correspondente. Caso contrário, é publicado como `latest`.
+
+Isso garante que:
+- `npm install @ozmap/logger` **sempre instala a última versão estável** — produtos em produção não são afetados
+- Versões de teste são acessíveis apenas para quem pede explicitamente
+
+### Para desenvolvedores do OZLogger
+
+#### Publicar uma versão de teste (alpha/beta)
+
+```bash
+# Criar release alpha para testar mudanças
+gh release create v0.3.0-alpha.1 --title "v0.3.0-alpha.1" --prerelease
+```
+
+O CI publica com `--tag alpha`. Para instalar em outro projeto e testar:
+
+```bash
+npm install @ozmap/logger@alpha
+# ou uma versão específica:
+npm install @ozmap/logger@0.3.0-alpha.1
+```
+
+#### Publicar uma versão de produção
+
+```bash
+# Criar release de produção
+gh release create v0.3.0 --title "v0.3.0" --generate-notes
+```
+
+O CI publica com `--tag latest`. Todos que fizerem `npm install @ozmap/logger` receberão esta versão.
+
+#### Fluxo completo de uma feature
+
+```bash
+# 1. Desenvolver na branch
+git checkout -b feature/nova-funcionalidade
+# ... fazer alterações ...
+npm test  # Garantir cobertura >= 95%
+git push origin feature/nova-funcionalidade
+
+# 2. Abrir PR para develop, revisar, mergear
+
+# 3. Quando develop está pronto, mergear em main/master
+
+# 4. Publicar alpha para validação
+gh release create v0.3.0-alpha.1 --target main --prerelease
+# CI testa e publica como alpha
+
+# 5. Testar em um projeto consumidor
+npm install @ozmap/logger@alpha
+# Validar que tudo funciona
+
+# 6. Publicar versão de produção
+gh release create v0.3.0 --target main --generate-notes
+# CI testa e publica como latest
+```
+
+### Para projetos que consomem o OZLogger
+
+Nenhuma ação é necessária ao atualizar o OZLogger. O fluxo normal continua funcionando:
+
+```bash
+# Instala/atualiza para a última versão estável
+npm install @ozmap/logger
+
+# Lockfile (package-lock.json / pnpm-lock.yaml) garante
+# que a versão não muda sozinha em produção
+```
+
+Versiones `alpha` e `beta` **nunca** são instaladas automaticamente — apenas com `@alpha`, `@beta` ou a versão exata. Projetos em produção com versão travada no lockfile não são impactados por nenhuma release.
+
+### Autorizando repositórios da organização no CI
+
+Quando o CI de outro repositório (ex: `ozmap/api`) precisa instalar `@ozmap/logger`, o `GITHUB_TOKEN` daquele repositório **não tem acesso ao pacote por padrão**.
+
+Para autorizar sem criar tokens manuais, vá até as configurações do pacote:
+
+**https://github.com/orgs/ozmap/packages/npm/logger/settings**
+
+Na seção **"Manage Actions access"**, clique em **"Add Repository"** e selecione os repositórios que devem ter acesso. Após isso, o `GITHUB_TOKEN` automático do Actions é suficiente:
+
+```yaml
+# No CI do repositório consumidor
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@ozmap'
+      - run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+> Sem secrets extras para criar, rotacionar ou gerenciar. Veja mais detalhes no [Guia de Autenticação](docs/GITHUB-PACKAGES-AUTH.md) e na [documentação oficial do GitHub](https://docs.github.com/pt/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
+
+---
+
 ## Contribuindo
 
 ### Pré-requisitos
@@ -828,6 +1015,8 @@ npm test
 Para informações mais detalhadas, consulte:
 
 - [Quick Guide](docs/QUICK-GUIDE.md) - Guia rápido com exemplos práticos
+- [Integração OpenTelemetry](docs/OTEL-INTEGRATION.md) - Distributed tracing com Express, propagação de traceId/spanId do browser, e uso seguro em requests concorrentes
+- [Autenticação GitHub Packages](docs/GITHUB-PACKAGES-AUTH.md) - Script de autenticação, uso com Docker, e autorização de repositórios
 - [Arquitetura](docs/ARCHITECTURE.md) - Detalhes da arquitetura interna
 - [Análise: Sistema HTTP](docs/ANALYSIS-HTTP-SYSTEM.md) - Análise profunda do servidor HTTP
 - [Análise: Process Hang](docs/ANALYSIS-PROCESS-HANG.md) - Análise técnica do problema de processo pendurado

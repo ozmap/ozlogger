@@ -8,10 +8,9 @@
 | **GitHub** | [#39](https://github.com/ozmap/ozlogger/issues/39) |
 | **Título** | Timer ID Duplicado Lança Exceção |
 | **Prioridade** | 🔴 Alta |
-| **Status** | Workaround Disponível |
+| **Status** | ✅ Concluído |
 | **Estimativa** | 0.5 dia |
-| **Assignee** | - |
-| **Breaking Change** | Potencial (comportamento) |
+| **Breaking Change** | Sim (comportamento de erro) |
 
 ## Problema
 
@@ -20,51 +19,35 @@ logger.time('process');
 logger.time('process'); // Error: Identifier process is in use
 ```
 
-Timer duplicado causa crash da aplicação.
+Timer duplicado causava crash da aplicação devido a exceção não tratada.
 
 ## Impacto
 
 ### Afetados
 - ❌ Loops que reutilizam ID
 - ❌ Código sem tratamento de erro
-- ❌ Bibliotecas que usam OZLogger internamente
 
-### Workarounds
-- ✅ Usar IDs únicos
-- ✅ Try/catch ao redor
-- ✅ UUID para cada timer
+## Solução Implementada (Opção B)
 
-## Opções de Solução
-
-| Opção | Comportamento | Recomendado |
-|-------|---------------|-------------|
-| A | Sobrescrever sempre | ❌ |
-| B | Warning + sobrescrever | ✅ |
-| C | Configurável | ❌ (complexo) |
-
-## Recomendação
-
-**Opção B:** Warning e sobrescreve
+O método `time(id)` foi alterado para emitir um **WARNING** e reiniciar o timer, em vez de lançar exceção.
 
 ```typescript
-public time(id: string): Logger {
-    if (this.timers.has(id)) {
-        this.warn(`Timer '${id}' already running, restarting`);
-    }
-    this.timers.set(id, Date.now());
-    return this;
-}
+// Agora:
+logger.time('process');
+logger.time('process'); 
+// Log: [WARN] Identifier process is already in use. Overwriting...
+// Timer 'process' agora conta a partir da segunda chamada.
 ```
 
 ### Benefícios
-- ✅ Não quebra aplicação
-- ✅ Informa desenvolvedor
-- ✅ Mantém funcionalidade
+- ✅ Não quebra aplicação em produção
+- ✅ Informa desenvolvedor sobre erro de lógica
+- ✅ Mantém funcionalidade viva
 
-## Decisões Pendentes
+## Decisões
 
-1. Confirmar que Opção B é a escolha final
-2. Decidir se deve ser configurável no futuro
+- **Opção B (Warning + Overwrite)** foi escolhida por ser a mais robusta e simples.
+- Não foi adicionada configuração para manter a API limpa.
 
 ## Links Relacionados
 

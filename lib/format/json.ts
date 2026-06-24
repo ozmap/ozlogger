@@ -76,13 +76,20 @@ export function json<TScope extends Logger>(
 	const now = datetime<{ timestamp?: string }>();
 	const paint = colorized();
 
-	return async (level: LevelTag, ...args: unknown[]) => {
-		const payload = toStructuredJsonLog.call(this, level, now, tag);
+	return (level: LevelTag, ...args: unknown[]) => {
+		// A log call must never throw into the caller's business logic, so we
+		// isolate serialization and the underlying (possibly app-provided)
+		// client behind a try/catch.
+		try {
+			const payload = toStructuredJsonLog.call(this, level, now, tag);
 
-		for (const arg of args) {
-			payload.push(normalize(arg));
+			for (const arg of args) {
+				payload.push(normalize(arg));
+			}
+
+			logger.log(paint[level](payload.toString()));
+		} catch (e) {
+			console.error('[OZLogger] failed to emit log:', e);
 		}
-
-		logger.log(paint[level](payload.toString()));
 	};
 }

@@ -5,38 +5,115 @@ import http, {
 	Server,
 	ServerResponse
 } from 'http';
+import { AddressInfo } from 'net';
 import { ProcessedRequest } from '../util/type/Http';
 import { HttpError } from './errors';
 import { Logger } from '../Logger';
 import routes from './routes';
 
 /**
- * Function to create HTTP server on the primary process.
+ * Singleton server instance for the process.
+ * Ensures only one HTTP server is created regardless of how many loggers are instantiated.
+ */
+let globalServer: Server | null = null;
+
+/**
+ * The actual port the server is listening on.
+ * Useful when port 0 (dynamic) is requested.
+ */
+let actualPort: number | null = null;
+
+/**
+ * Get the actual port the server is listening on.
  *
- * @param   port     The interface port for the server to listen on.
- * @param   address  The interface address for the server to listen on.
- * @returns The HTTP server that was setup.
+ * @returns The actual port number or null if server is not running.
+ */
+export function getServerPort(): number | null {
+	return actualPort;
+}
+
+/**
+ * Get the global server instance.
+ *
+ * @returns The server instance or null if not running.
+ */
+export function getServerInstance(): Server | null {
+	return globalServer;
+}
+
+/**
+ * Reset the global server state.
+ * This is primarily useful for testing to allow starting a new server.
+ * Note: This does NOT close the server, call server.close() first if needed.
+ */
+export function resetServerState(): void {
+	globalServer = null;
+	actualPort = null;
+	// Reset the env variable to allow new server creation
+	delete process.env.OZLOGGER_HTTP;
+}
+
+/**
+ * Function to create HTTP server on the primary process.
+ * Implements singleton pattern to prevent port conflicts when multiple loggers are created.
+ * Gracefully handles EADDRINUSE errors when port is already in use.
+ *
+ * @param   port       The interface port for the server to listen on. Use 0 for dynamic port.
+ * @param   address    The interface address for the server to listen on.
+ * @param   allowExit  If true, calls server.unref() to allow process exit.
+ * @returns The HTTP server that was setup, or undefined if server is disabled or already running.
  */
 export function setupLogServer<TScope extends Logger>(
 	this: TScope,
 	port: number,
-	address: string
+	address: string,
+	allowExit?: boolean
 ): Server | void {
 	if (cluster.isWorker) return;
 
+	// Return existing server if already created (singleton pattern)
+	// This check must come BEFORE the OZLOGGER_HTTP check since we set it to 'false' after starting
+	if (globalServer) {
+		return globalServer;
+	}
+
+	// Check if HTTP server is explicitly disabled
 	if (process.env.OZLOGGER_HTTP?.match(/false/i)) return;
 
+	// Mark as initialized to prevent other loggers from trying
 	process.env.OZLOGGER_HTTP = 'false';
 
 	try {
-		return http
-			.createServer(handleRequest.call(this))
-			.listen(port, address, () => {
-				this.info(`Log server started listening at ${address}:${port}`);
-			})
-			.on('error', (e) => {
+		const server = http.createServer(handleRequest.call(this));
+
+		server.on('listening', () => {
+			const addr = server.address() as AddressInfo;
+			actualPort = addr.port;
+			this.info(
+				`Log server started listening at ${address}:${actualPort}`
+			);
+		});
+
+		server.on('error', (e: NodeJS.ErrnoException) => {
+			if (e.code === 'EADDRINUSE') {
+				this.warn(
+					`Log server port ${port} already in use, server not started`
+				);
+				globalServer = null;
+				actualPort = null;
+			} else {
 				this.error(`Log server at ${address}:${port} got an error`, e);
-			});
+			}
+		});
+
+		server.listen(port, address);
+
+		if (allowExit) {
+			server.unref();
+		}
+
+		globalServer = server;
+		return server;
 	} catch (e) {
 		this.error(`Log server failed to start at ${address}:${port}`);
 	}
@@ -134,10 +211,11 @@ export function checkRequestHeader(
 	if (!(header in headers)) return false;
 
 	return Array.isArray(headers[header])
-		? (headers[header] as string[]).some((h) => h.trim() === value) ?? false
-		: (headers[header] as string)
+		? ((headers[header] as string[]).some((h) => h.trim() === value) ??
+				false)
+		: ((headers[header] as string)
 				?.split(',')
-				.some((h) => h.trim() === value) ?? false;
+				.some((h) => h.trim() === value) ?? false);
 }
 
 /**

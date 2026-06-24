@@ -8,7 +8,7 @@
 | **GitHub** | [#37](https://github.com/ozmap/ozlogger/issues/37) |
 | **Título** | Corrigir Process Hang |
 | **Prioridade** | 🔴 Crítico |
-| **Status** | Não Iniciado |
+| **Status** | ✅ Concluído |
 | **Estimativa** | 1-2 dias |
 | **Assignee** | - |
 | **Breaking Change** | Não |

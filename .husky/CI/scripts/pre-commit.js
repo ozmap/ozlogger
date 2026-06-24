@@ -52,7 +52,7 @@ ci.stage({
 
 					if (staged) {
 						execSync(`npm run format -- ${staged}`, {
-							timeout: 15000 // 15 seconds
+							timeout: 60000 // 60 seconds
 						});
 						execSync(`git add ${staged}`, {
 							timeout: 5000 // 5 seconds
@@ -69,7 +69,7 @@ ci.stage({
 
 					if (staged) {
 						execSync(`npm run lint -- ${staged}`, {
-							timeout: 15000 // 15 seconds
+							timeout: 60000 // 60 seconds
 						});
 					}
 				}
