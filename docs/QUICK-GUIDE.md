@@ -47,7 +47,7 @@ const logger = createLogger('MeuApp');
 // Métodos de log disponíveis
 logger.debug('Mensagem de debug');
 logger.info('Mensagem informativa');
-logger.audit('Ação de auditoria');
+logger.audit({ action: 'recurso_acessado' }); // um único argumento
 logger.warn('Aviso importante');
 logger.error('Erro encontrado');
 ```
@@ -96,8 +96,8 @@ logger.debug('Query executada', { sql: 'SELECT * FROM users', time: '15ms' });
 // INFO - Eventos normais do sistema
 logger.info('Servidor iniciado na porta 3000');
 
-// AUDIT - Ações que precisam ser rastreadas
-logger.audit('Usuário logou', { userId: 123, ip: '192.168.1.1' });
+// AUDIT - Ações que precisam ser rastreadas (um único objeto JSON)
+logger.audit({ action: 'user_login', userId: 123, ip: '192.168.1.1' });
 
 // WARN - Situações potencialmente problemáticas
 logger.warn('Cache miss para chave', { key: 'user:123' });
@@ -105,6 +105,8 @@ logger.warn('Cache miss para chave', { key: 'user:123' });
 // ERROR - Erros que precisam de atenção
 logger.error('Falha na conexão com banco', new Error('Connection timeout'));
 ```
+
+> **`audit` é especial:** recebe **um único argumento** (de qualquer tipo, idealmente um objeto com labels) e é o canal de auditoria para o **VictoriaLogs**. Passar mais de um argumento lança erro. Não inclua `timestamp`/`traceId`/`pid` no objeto — já são adicionados automaticamente pelo logger e/ou pelo VictoriaLogs. Um body acima de 256KB é descartado com um ERROR. Veja as boas práticas no [README](../README.md#auditoria-e-bases-de-logs-victorialogs--loki--signoz).
 
 ### Configurar Nível Mínimo
 
@@ -244,7 +246,7 @@ app.get('/users/:id', async (req, res) => {
     
     try {
         const user = await findUser(req.params.id);
-        req.logger.audit('Usuário encontrado', { userId: req.params.id });
+        req.logger.audit({ action: 'user_found', userId: req.params.id });
         res.json(user);
     } catch (error) {
         req.logger.error('Erro ao buscar usuário', error);
@@ -325,7 +327,7 @@ function logUserAction(user: User, action: string) {
     // Depois mascarar campos sensíveis
     const safe = mask(filtered, ['password', 'cpf', 'creditCard']);
     
-    logger.audit(action, { user: safe });
+    logger.audit({ action, user: safe });
 }
 ```
 
@@ -586,8 +588,9 @@ function auditUserAction(
     user: User,
     details: Record<string, unknown>
 ) {
-    logger.audit(action, {
-        timestamp: new Date().toISOString(),
+    // Um único objeto. Não inclua timestamp/traceId/etc — já são
+    // adicionados pelo logger e/ou pelo VictoriaLogs na ingestão.
+    logger.audit({
         actor: {
             id: user.id,
             email: mask({ email: user.email }, ['email']).email,

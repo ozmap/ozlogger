@@ -65,7 +65,7 @@ block-beta
 |--------|-----------|
 | `debug()` | Logs de depuração (severity: 5) |
 | `info()` | Logs informativos (severity: 9) |
-| `audit()` | Logs de auditoria (severity: 12) |
+| `audit(data)` | Auditoria p/ VictoriaLogs — um único argumento (severity: 12) |
 | `warn()` | Logs de aviso (severity: 13) |
 | `error()` | Logs de erro (severity: 17) |
 | `time()` | Inicia um timer para medição |

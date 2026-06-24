@@ -1,6 +1,10 @@
 import { LogWrapper } from './util/type/LogWrapper';
 import { AbstractLogger } from './util/type/AbstractLogger';
-import { LogMethod, LoggerMethods } from './util/interface/LoggerMethods';
+import {
+	LogMethod,
+	AuditMethod,
+	LoggerMethods
+} from './util/interface/LoggerMethods';
 import { LogContext } from './util/interface/LogContext';
 import { LogLevels } from './util/enum/LogLevels';
 import { LevelTag } from './util/enum/LevelTags';
@@ -8,7 +12,13 @@ import { Server } from 'http';
 import { getLogWrapper } from './format';
 import { registerEvent } from './util/Events';
 import { setupLogServer } from './http/server';
-import { level, output, host, getProcessInformation } from './util/Helpers';
+import {
+	level,
+	output,
+	host,
+	getProcessInformation,
+	getCircularReplacer
+} from './util/Helpers';
 import { context, trace } from '@opentelemetry/api';
 
 /**
@@ -20,6 +30,17 @@ const DEFAULT_TIMER_TTL = 600000;
  * Default timer cleanup interval in milliseconds (1 minute).
  */
 const DEFAULT_TIMER_GC_INTERVAL = 60000;
+
+/**
+ * Maximum serialized size, in bytes, allowed for an audit body.
+ *
+ * VictoriaLogs skips log lines larger than its `-insert.maxLineSizeBytes`
+ * (256KB by default) during ingestion, and handles records approaching the
+ * hardcoded 2MB ceiling inefficiently. We cap the audit body at that 256KB
+ * line limit so a single audit entry never floods VictoriaLogs; bodies above
+ * it are dropped with an error.
+ */
+const DEFAULT_AUDIT_MAX_BYTES = 256 * 1024;
 
 /**
  * Logger module class.
@@ -230,6 +251,73 @@ export class Logger implements LoggerMethods {
 	}
 
 	/**
+	 * Factory method for the audit logging method.
+	 *
+	 * Audit is the VictoriaLogs ingestion entrypoint, so it is intentionally
+	 * stricter than the other log methods: it accepts exactly one value (of any
+	 * type). Passing a different number of arguments is a programming error and
+	 * throws, regardless of the active level, so it is caught in dev/test. An
+	 * oversized or unserializable body is a runtime data problem: it is reported
+	 * via this.error() and dropped, never crashing the host nor flooding
+	 * VictoriaLogs.
+	 *
+	 * @param   enabled  If the audit level is enabled for the current level.
+	 * @returns The audit logging function.
+	 */
+	private buildAudit(enabled: boolean): AuditMethod {
+		const fn = (...args: unknown[]): void => {
+			// Audit takes exactly one value (of any type). Passing a different
+			// number of arguments is a programming error and throws, regardless
+			// of level, so it surfaces even when audit is disabled.
+			if (args.length !== 1) {
+				throw new Error(
+					`audit() expects exactly one argument, but received ${args.length}`
+				);
+			}
+
+			const data = args[0];
+
+			if (!enabled) return;
+
+			let serialized: string | undefined;
+			try {
+				serialized = JSON.stringify(data, getCircularReplacer());
+			} catch (e) {
+				this.error(
+					'[OZLogger] audit() could not serialize the provided value; record dropped',
+					e
+				);
+				return;
+			}
+
+			// JSON.stringify yields undefined for values such as undefined or
+			// functions; treat those as empty for the size check.
+			const size = Buffer.byteLength(serialized ?? '', 'utf8');
+			if (size > DEFAULT_AUDIT_MAX_BYTES) {
+				this.error(
+					`[OZLogger] audit() body of ${size} bytes exceeds the safe limit of ${DEFAULT_AUDIT_MAX_BYTES} bytes for VictoriaLogs ingestion; record dropped`
+				);
+				return;
+			}
+
+			this.logger('AUDIT', data);
+		};
+
+		const timeEnd = !enabled
+			? (id: string) => {
+					// We must cleanup the timer even if we don't log
+					if (this.timers.has(id)) this.timers.delete(id);
+					return this;
+				}
+			: (id: string) => {
+					this.logger('AUDIT', `${id}: ${this.getTime(id)} ms`);
+					return this;
+				};
+
+		return Object.assign(fn, { timeEnd });
+	}
+
+	/**
 	 * Method for handling scheduling logger tasks.
 	 *
 	 * @param   id        The task identifier.
@@ -266,7 +354,7 @@ export class Logger implements LoggerMethods {
 		this.critical = this.toggle(LogLevels['critical'] >= lvl, 'CRITICAL');
 		this.error = this.toggle(LogLevels['error'] >= lvl, 'ERROR');
 		this.warn = this.toggle(LogLevels['warn'] >= lvl, 'WARNING');
-		this.audit = this.toggle(LogLevels['audit'] >= lvl, 'AUDIT');
+		this.audit = this.buildAudit(LogLevels['audit'] >= lvl);
 		this.info = this.toggle(LogLevels['info'] >= lvl, 'INFO');
 		this.http = this.toggle(LogLevels['http'] >= lvl, 'HTTP');
 		this.debug = this.toggle(LogLevels['debug'] >= lvl, 'DEBUG');
@@ -431,9 +519,14 @@ export class Logger implements LoggerMethods {
 	/**
 	 * Audit logging method.
 	 *
-	 * @param   args  Data to be logged.
+	 * Entrypoint for VictoriaLogs ingestion. Accepts exactly one argument of any
+	 * type, written as-is to stdout. Passing a different number of arguments
+	 * throws; an oversized body (over {@link DEFAULT_AUDIT_MAX_BYTES}) is dropped
+	 * with an error.
+	 *
+	 * @param   data  The single value to be audited.
 	 */
-	public audit: LogMethod;
+	public audit: AuditMethod;
 
 	/**
 	 * HTTP request logging method. Same as '.info()'.
