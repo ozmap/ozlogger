@@ -32,14 +32,20 @@ export function text<TScope extends Logger>(
 					typeof args[0] === 'object' && args[0] !== null
 						? (args[0] as Record<string, unknown>)
 						: { _msg: args[0] };
+				const id =
+					fields.audit_id !== undefined
+						? stringify(fields.audit_id)
+						: '';
 				const msg =
 					fields._msg !== undefined ? stringify(fields._msg) : '';
 				const body =
 					fields.body !== undefined ? stringify(fields.body) : '';
 
+				// Keep the audit_id in text mode too, so a line can still be
+				// correlated with its JSON counterpart and the oversize ERROR.
 				logger.log(
 					paint[level](
-						`${now()}[${level}] ${tag ?? ''} ${msg} ${body}`.trimEnd()
+						`${now()}[${level}] ${tag ?? ''} ${id} ${msg} ${body}`.trimEnd()
 					)
 				);
 				return;
