@@ -197,12 +197,22 @@ describe('Text Formatter', () => {
 	});
 
 	test('should render audit as message followed by the body', () => {
-		logger.audit('alice login', { user: 'alice' });
+		logger.audit('signin', { account: 'alice' });
 		expect(logged.length).toBe(1);
 		expect(logged[0]).toContain('[AUDIT]');
 		expect(logged[0]).toContain('TEXT-TEST');
-		expect(logged[0]).toContain('alice login');
+		expect(logged[0]).toContain('signin');
+		// A body-only token proves the body half of the line is rendered
+		// (not just the message).
+		expect(logged[0]).toContain('account');
 		expect(logged[0]).toContain('alice');
+	});
+
+	test('should render a scalar audit body', () => {
+		logger.audit('the answer', 42);
+		expect(logged[0]).toContain('[AUDIT]');
+		expect(logged[0]).toContain('the answer');
+		expect(logged[0]).toContain('42');
 	});
 
 	test('should render audit timeEnd without throwing', () => {

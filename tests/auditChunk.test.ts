@@ -128,6 +128,17 @@ describe('AuditChunk (reusable pure split util)', () => {
 			}
 			expect(parts.join('')).toBe(str);
 		});
+
+		test('terminates and round-trips when the limit is smaller than a character', () => {
+			// A 4-byte emoji with a 3-byte limit cannot fit; the chunker must
+			// still make progress (emit the whole character) instead of looping.
+			const parts = chunkStringByBytes('😀', 3);
+			expect(parts).toEqual(['😀']);
+
+			const many = chunkStringByBytes('😀😀😀', 1);
+			expect(many).toEqual(['😀', '😀', '😀']);
+			expect(many.join('')).toBe('😀😀😀');
+		});
 	});
 
 	describe('splitFirstLevel', () => {
@@ -180,9 +191,12 @@ describe('AuditChunk (reusable pure split util)', () => {
 	describe('countChunks', () => {
 		test('counts the segments the heavy entries will produce', () => {
 			const arr = Array.from({ length: 5000 }, (_, i) => `id-${i}`);
-			const heavy: Array<[string, unknown]> = [['ids', arr]];
-			const expected = chunkArrayByBytes(arr, 1024).length;
-			expect(countChunks(heavy, 1024)).toBe(expected);
+			const body = { ids: arr };
+			// countChunks must agree with the segments splitAuditBody emits,
+			// since both go through the same per-field chunking.
+			const { heavy } = splitFirstLevel(body, 1024);
+			const { segments } = splitAuditBody(body, { limit: 1024 });
+			expect(countChunks(heavy, 1024)).toBe(segments.length);
 		});
 	});
 
@@ -216,6 +230,11 @@ describe('AuditChunk (reusable pure split util)', () => {
 				expect(seg.chunk_field).toBe('body.affected_ids');
 				expect('body' in seg).toBe(true);
 				expect('chunk_part' in seg).toBe(false);
+				// The EMITTED segment body (wrapper included), not just the bare
+				// array, must stay within the limit.
+				expect(
+					byteLen((seg as { body: Record<string, unknown> }).body)
+				).toBeLessThanOrEqual(16 * 1024);
 			});
 
 			// Reconstruction: concatenate the array slices in order.
@@ -250,6 +269,63 @@ describe('AuditChunk (reusable pure split util)', () => {
 				.map((seg) => (seg as { chunk_part: string }).chunk_part)
 				.join('');
 			expect(rebuilt).toBe(blob);
+
+			// The marker's bytes/sha1 must verify the reconstructed value
+			// end-to-end (the whole point of the marker — RFC §8.1 / §13).
+			const marker = header.body.result_csv as {
+				bytes: number;
+				sha1: string;
+			};
+			expect(Buffer.byteLength(rebuilt, 'utf8')).toBe(marker.bytes);
+			expect(createHash('sha1').update(rebuilt).digest('hex')).toBe(
+				marker.sha1
+			);
+		});
+
+		test('marks chunked:false / chunk_total:0 when nothing needs breaking', () => {
+			const { header, segments } = splitAuditBody({
+				action: 'login',
+				user: 'alice'
+			});
+
+			expect(header.chunked).toBe(false);
+			expect(header.chunk_total).toBe(0);
+			expect(segments).toHaveLength(0);
+			// The first level is preserved inline (no markers).
+			expect(header.body).toEqual({ action: 'login', user: 'alice' });
+		});
+
+		test('uses one global chunk_seq across a mixed array + scalar body', () => {
+			const ids = Array.from({ length: 20000 }, (_, i) => `id-${i}`);
+			const blob = 'y'.repeat(40 * 1024);
+			const { header, segments } = splitAuditBody(
+				{ action: 'bulk', affected_ids: ids, result_csv: blob },
+				{ limit: 16 * 1024 }
+			);
+
+			// chunk_seq must be contiguous and unique 0..chunk_total-1 across
+			// BOTH fields (global sequencing, not per-field).
+			expect(segments.map((s) => s.chunk_seq)).toEqual(
+				Array.from({ length: header.chunk_total }, (_, i) => i)
+			);
+
+			// Each field reconstructs from its own chunk_field group.
+			const arr = segments
+				.filter((s) => s.chunk_field === 'body.affected_ids')
+				.sort((a, b) => a.chunk_seq - b.chunk_seq)
+				.flatMap(
+					(s) =>
+						(s as { body: Record<string, unknown> }).body
+							.affected_ids as unknown[]
+				);
+			expect(arr).toEqual(ids);
+
+			const text = segments
+				.filter((s) => s.chunk_field === 'body.result_csv')
+				.sort((a, b) => a.chunk_seq - b.chunk_seq)
+				.map((s) => (s as { chunk_part: string }).chunk_part)
+				.join('');
+			expect(text).toBe(blob);
 		});
 
 		test('spreads first-level keys across lines on field-count overflow', () => {

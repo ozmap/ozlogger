@@ -32,7 +32,7 @@ export type HeavyMarker = {
  */
 export type AuditChunkHeader = {
 	body: Record<string, unknown>;
-	chunked: true;
+	chunked: boolean;
 	chunk_total: number;
 };
 
@@ -229,6 +229,14 @@ export function chunkStringByBytes(str: string, limit: number): string[] {
 			while (end > offset && (buf[end] & 0xc0) === 0x80) end--;
 		}
 
+		// If the limit is smaller than the character at `offset`, the back-off
+		// collapses to `offset`. Emit one whole character anyway so progress is
+		// guaranteed and the loop can never spin forever on a tiny limit.
+		if (end === offset) {
+			end = offset + 1;
+			while (end < buf.length && (buf[end] & 0xc0) === 0x80) end++;
+		}
+
 		parts.push(buf.toString('utf8', offset, end));
 		offset = end;
 	}
@@ -313,7 +321,13 @@ function chunkField(
 	const ref = `body.${field}`;
 
 	if (Array.isArray(value)) {
-		return chunkArrayByBytes(value, limit).map((part) => ({
+		// Array parts are emitted wrapped as `{ "<field>": [...] }`. Reserve the
+		// wrapper bytes (`{"<field>":` + `}`) so the emitted segment — not just
+		// the bare array — stays within the limit.
+		const wrapperBytes = byteLen(`{"${field}":}`);
+		const arrayLimit = Math.max(2, limit - wrapperBytes);
+
+		return chunkArrayByBytes(value, arrayLimit).map((part) => ({
 			chunk_field: ref,
 			body: { [field]: part }
 		}));
@@ -430,7 +444,7 @@ export function splitAuditBody(
 	});
 
 	return {
-		header: { body: headerBody, chunked: true, chunk_total },
+		header: { body: headerBody, chunked: chunk_total > 0, chunk_total },
 		segments
 	};
 }
