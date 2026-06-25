@@ -17,9 +17,10 @@ import {
 	output,
 	host,
 	getProcessInformation,
-	getCircularReplacer
+	getCircularReplacer,
+	isJsonObject
 } from './util/Helpers';
-import { auditId } from './util/AuditChunk';
+import { auditId, splitAuditBody, SAFE_LINE_BYTES } from './util/AuditChunk';
 import { context, trace } from '@opentelemetry/api';
 
 /**
@@ -31,17 +32,6 @@ const DEFAULT_TIMER_TTL = 600000;
  * Default timer cleanup interval in milliseconds (1 minute).
  */
 const DEFAULT_TIMER_GC_INTERVAL = 60000;
-
-/**
- * Maximum serialized size, in bytes, allowed for an audit body.
- *
- * VictoriaLogs skips log lines larger than its `-insert.maxLineSizeBytes`
- * (256KB by default) during ingestion, and handles records approaching the
- * hardcoded 2MB ceiling inefficiently. We cap the audit body at that 256KB
- * line limit so a single audit entry never floods VictoriaLogs; bodies above
- * it are dropped with an error.
- */
-const DEFAULT_AUDIT_MAX_BYTES = 256 * 1024;
 
 /**
  * Logger module class.
@@ -306,10 +296,11 @@ export class Logger implements LoggerMethods {
 			// JSON.stringify yields undefined for values such as undefined or
 			// functions; treat those as empty for the size check.
 			const size = Buffer.byteLength(serialized ?? '', 'utf8');
-			if (size > DEFAULT_AUDIT_MAX_BYTES) {
-				this.error(
-					`[OZLogger] audit() body of ${size} bytes exceeds the safe limit of ${DEFAULT_AUDIT_MAX_BYTES} bytes for VictoriaLogs ingestion; record dropped (audit_id=${id})`
-				);
+			if (size > SAFE_LINE_BYTES) {
+				// Contingency, not a feature: rather than silently dropping the
+				// record, break it into safe-sized lines and raise a loud ERROR
+				// so the oversize is fixed at the source (audit the intent).
+				this.emitOversizeAudit(msg, body, id);
 				return;
 			}
 
@@ -331,6 +322,91 @@ export class Logger implements LoggerMethods {
 				};
 
 		return Object.assign(fn, { timeEnd });
+	}
+
+	/**
+	 * Breaks an oversized audit record into safe-sized lines and emits the
+	 * mandatory ERROR.
+	 *
+	 * This is a contingency, not a feature (RFC §8): it exists only so a large
+	 * record is never silently lost. The break is delegated to the shared
+	 * {@link splitAuditBody} util — so every place that breaks audit logs does
+	 * it identically — and produces a header line (the full first level, with
+	 * oversized values replaced by markers) plus segment lines, all correlated
+	 * by the same `audit_id`. A high-visibility ERROR carrying the `audit_id`
+	 * is always raised so the oversize is corrected at the source.
+	 *
+	 * @param   msg   The audit message.
+	 * @param   body  The oversized body.
+	 * @param   id    The audit_id correlating every emitted line.
+	 */
+	private emitOversizeAudit(msg: string, body: unknown, id: string): void {
+		// splitAuditBody works on the first level of an object; a non-object
+		// body is wrapped so it can still be broken without losing data.
+		const input = isJsonObject(body)
+			? (body as Record<string, unknown>)
+			: { value: body };
+
+		const { header, segments } = splitAuditBody(input, {
+			limit: SAFE_LINE_BYTES
+		});
+
+		// The AUDIT_OVERSIZE ERROR is mandatory on every break (RFC §8): emit it
+		// through the underlying wrapper directly, NOT via this.error(), so it is
+		// never suppressed by the active log level (e.g. at 'critical'/'quiet').
+		// Without this, a break could ship chunk lines while silently dropping
+		// the high-visibility alert that signals the oversize must be fixed.
+		this.logger(
+			'ERROR',
+			`[OZLogger] AUDIT_OVERSIZE audit_id=${id}: the audit record exceeded ` +
+				`the ${SAFE_LINE_BYTES} bytes safe line limit and was broken into ` +
+				`${header.chunk_total} part(s). This is a contingency, not a feature; ` +
+				`reduce the volume at the source (audit the intent, RFC §7).`
+		);
+
+		this.logger('AUDIT', { audit_id: id, _msg: msg, ...header });
+
+		for (const segment of segments) {
+			this.logger('AUDIT', { audit_id: id, ...segment });
+		}
+	}
+
+	/**
+	 * Temporary contingency entrypoint for the import tool.
+	 *
+	 * @deprecated Not a feature. Created so the import tool — which still emits
+	 * large records (resolved identifier lists) — does not lose data silently
+	 * while it is not yet auditing the intent (RFC §7, §9). It breaks an
+	 * oversized body into audit lines of up to ~200KB using the same shared
+	 * {@link splitAuditBody} util as `audit()`, always raising an
+	 * AUDIT_OVERSIZE ERROR. A body that already fits takes the normal
+	 * single-line path. Remove this once the import tool audits the intent.
+	 *
+	 * @param   _msg  The audit message (always a string).
+	 * @param   body  The record body.
+	 */
+	public auditChunked(_msg: string, body: Record<string, unknown>): void {
+		const id = auditId();
+
+		let serialized: string | undefined;
+		try {
+			serialized = JSON.stringify(body, getCircularReplacer());
+		} catch (e) {
+			this.error(
+				`[OZLogger] auditChunked() could not serialize the provided body; record dropped (audit_id=${id})`,
+				e
+			);
+			return;
+		}
+
+		const size = Buffer.byteLength(serialized ?? '', 'utf8');
+		if (size <= SAFE_LINE_BYTES) {
+			// It fits: normal single-line path, no break, no ERROR.
+			this.logger('AUDIT', { audit_id: id, _msg, body });
+			return;
+		}
+
+		this.emitOversizeAudit(_msg, body, id);
 	}
 
 	/**
@@ -539,8 +615,9 @@ export class Logger implements LoggerMethods {
 	 * the first argument is the message string, the second is the record body
 	 * (written whole under a reserved envelope, never as `body.0`). Every record
 	 * carries a generated `audit_id`. Passing a different number of arguments —
-	 * or a non-string message — throws; an oversized body (over
-	 * {@link DEFAULT_AUDIT_MAX_BYTES}) is dropped with an error.
+	 * or a non-string message — throws. An oversized body (over
+	 * {@link SAFE_LINE_BYTES}) is not dropped: it is broken into safe-sized lines
+	 * with a loud AUDIT_OVERSIZE ERROR (contingency, see {@link auditChunked}).
 	 *
 	 * @param   _msg  The audit message (always a string).
 	 * @param   body  The record body (assigned whole).
