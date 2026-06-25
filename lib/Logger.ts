@@ -19,6 +19,7 @@ import {
 	getProcessInformation,
 	getCircularReplacer
 } from './util/Helpers';
+import { auditId } from './util/AuditChunk';
 import { context, trace } from '@opentelemetry/api';
 
 /**
@@ -254,11 +255,15 @@ export class Logger implements LoggerMethods {
 	 * Factory method for the audit logging method.
 	 *
 	 * Audit is the VictoriaLogs ingestion entrypoint, so it is intentionally
-	 * stricter than the other log methods: it accepts exactly one value (of any
-	 * type). Passing a different number of arguments is a programming error and
-	 * throws, regardless of the active level, so it is caught in dev/test. An
-	 * oversized or unserializable body is a runtime data problem: it is reported
-	 * via this.error() and dropped, never crashing the host nor flooding
+	 * stricter than the other log methods: it has a fixed signature
+	 * audit(_msg, body). The first argument is the message string; the second
+	 * is the record body, written to a reserved envelope as `body` (assigned
+	 * whole, so caller keys can never overwrite metadata). Passing a different
+	 * number of arguments — or a non-string message — is a programming error
+	 * and throws, regardless of the active level, so it is caught in dev/test.
+	 * Every record carries a generated `audit_id`. An oversized or
+	 * unserializable body is a runtime data problem: it is reported via
+	 * this.error() and dropped, never crashing the host nor flooding
 	 * VictoriaLogs.
 	 *
 	 * @param   enabled  If the audit level is enabled for the current level.
@@ -266,25 +271,33 @@ export class Logger implements LoggerMethods {
 	 */
 	private buildAudit(enabled: boolean): AuditMethod {
 		const fn = (...args: unknown[]): void => {
-			// Audit takes exactly one value (of any type). Passing a different
-			// number of arguments is a programming error and throws, regardless
-			// of level, so it surfaces even when audit is disabled.
-			if (args.length !== 1) {
+			// Audit has a fixed arity of two (_msg, body). A different arity or
+			// a non-string message is a programming error and throws,
+			// regardless of level, so it surfaces even when audit is disabled.
+			if (args.length !== 2) {
 				throw new Error(
-					`audit() expects exactly one argument, but received ${args.length}`
+					`audit() expects exactly two arguments (_msg, body), but received ${args.length}`
 				);
 			}
 
-			const data = args[0];
+			const [msg, body] = args;
+
+			if (typeof msg !== 'string') {
+				throw new TypeError(
+					`audit() expects the first argument (_msg) to be a string, but received ${typeof msg}`
+				);
+			}
 
 			if (!enabled) return;
 
+			const id = auditId();
+
 			let serialized: string | undefined;
 			try {
-				serialized = JSON.stringify(data, getCircularReplacer());
+				serialized = JSON.stringify(body, getCircularReplacer());
 			} catch (e) {
 				this.error(
-					'[OZLogger] audit() could not serialize the provided value; record dropped',
+					`[OZLogger] audit() could not serialize the provided body; record dropped (audit_id=${id})`,
 					e
 				);
 				return;
@@ -295,12 +308,12 @@ export class Logger implements LoggerMethods {
 			const size = Buffer.byteLength(serialized ?? '', 'utf8');
 			if (size > DEFAULT_AUDIT_MAX_BYTES) {
 				this.error(
-					`[OZLogger] audit() body of ${size} bytes exceeds the safe limit of ${DEFAULT_AUDIT_MAX_BYTES} bytes for VictoriaLogs ingestion; record dropped`
+					`[OZLogger] audit() body of ${size} bytes exceeds the safe limit of ${DEFAULT_AUDIT_MAX_BYTES} bytes for VictoriaLogs ingestion; record dropped (audit_id=${id})`
 				);
 				return;
 			}
 
-			this.logger('AUDIT', data);
+			this.logger('AUDIT', { audit_id: id, _msg: msg, body });
 		};
 
 		const timeEnd = !enabled
@@ -310,7 +323,10 @@ export class Logger implements LoggerMethods {
 					return this;
 				}
 			: (id: string) => {
-					this.logger('AUDIT', `${id}: ${this.getTime(id)} ms`);
+					this.logger('AUDIT', {
+						audit_id: auditId(),
+						_msg: `${id}: ${this.getTime(id)} ms`
+					});
 					return this;
 				};
 
@@ -519,12 +535,15 @@ export class Logger implements LoggerMethods {
 	/**
 	 * Audit logging method.
 	 *
-	 * Entrypoint for VictoriaLogs ingestion. Accepts exactly one argument of any
-	 * type, written as-is to stdout. Passing a different number of arguments
-	 * throws; an oversized body (over {@link DEFAULT_AUDIT_MAX_BYTES}) is dropped
-	 * with an error.
+	 * Entrypoint for VictoriaLogs ingestion. Fixed signature audit(_msg, body):
+	 * the first argument is the message string, the second is the record body
+	 * (written whole under a reserved envelope, never as `body.0`). Every record
+	 * carries a generated `audit_id`. Passing a different number of arguments —
+	 * or a non-string message — throws; an oversized body (over
+	 * {@link DEFAULT_AUDIT_MAX_BYTES}) is dropped with an error.
 	 *
-	 * @param   data  The single value to be audited.
+	 * @param   _msg  The audit message (always a string).
+	 * @param   body  The record body (assigned whole).
 	 */
 	public audit: AuditMethod;
 

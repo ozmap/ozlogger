@@ -130,7 +130,7 @@ describe('JSON Formatter', () => {
 		});
 
 		test('audit level', () => {
-			logger.audit({ msg: 'audit msg' });
+			logger.audit('audit msg', { msg: 'audit msg' });
 			const output = JSON.parse(logged[0]);
 			expect(output.severityText).toBe('AUDIT');
 			expect(output.severityNumber).toBe(12);
@@ -194,6 +194,22 @@ describe('Text Formatter', () => {
 	test('should join multiple arguments with space', () => {
 		logger.info('one', 'two', 'three');
 		expect(logged[0]).toContain('one two three');
+	});
+
+	test('should render audit as message followed by the body', () => {
+		logger.audit('alice login', { user: 'alice' });
+		expect(logged.length).toBe(1);
+		expect(logged[0]).toContain('[AUDIT]');
+		expect(logged[0]).toContain('TEXT-TEST');
+		expect(logged[0]).toContain('alice login');
+		expect(logged[0]).toContain('alice');
+	});
+
+	test('should render audit timeEnd without throwing', () => {
+		logger.time('op');
+		expect(() => logger.audit.timeEnd('op')).not.toThrow();
+		expect(logged[0]).toContain('[AUDIT]');
+		expect(logged[0]).toContain('op:');
 	});
 });
 
