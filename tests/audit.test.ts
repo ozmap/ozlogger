@@ -265,12 +265,37 @@ describe('audit (VictoriaLogs ingestion contract)', () => {
 			logger.auditChunked('import.bulk', { ids });
 
 			const records = logged.map((l) => JSON.parse(l));
-			expect(records.some((r) => r.chunked)).toBe(true);
+			const header = records.find((r) => r.chunked);
+			expect(header).toBeDefined();
 			expect(
 				records.filter((r) => r.severityText === 'ERROR').length
 			).toBe(1);
 			const error = records.find((r) => r.severityText === 'ERROR');
 			expect(error.body['0']).toContain('AUDIT_OVERSIZE');
+
+			// Reconstruction: the broken array round-trips from its segments.
+			const rebuilt = records
+				.filter((r) => r.chunk_field === 'body.ids')
+				.sort((a, b) => a.chunk_seq - b.chunk_seq)
+				.flatMap((seg) => seg.body.ids);
+			expect(rebuilt).toEqual(ids);
+		});
+
+		test('still emits the mandatory AUDIT_OVERSIZE ERROR even at quiet level', () => {
+			// The ERROR must never be gated away by the active level — it is the
+			// signal that a break happened (RFC §8). Chunk lines emit regardless.
+			logger.changeLevel('quiet');
+			logged = [];
+
+			logger.auditChunked('import.bulk', {
+				ids: Array.from({ length: 60000 }, (_, i) => `id-${i}`)
+			});
+
+			const records = logged.map((l) => JSON.parse(l));
+			const errors = records.filter((r) => r.severityText === 'ERROR');
+			expect(errors.length).toBe(1);
+			expect(errors[0].body['0']).toContain('AUDIT_OVERSIZE');
+			expect(records.some((r) => r.chunked)).toBe(true);
 		});
 	});
 

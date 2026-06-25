@@ -351,7 +351,13 @@ export class Logger implements LoggerMethods {
 			limit: SAFE_LINE_BYTES
 		});
 
-		this.error(
+		// The AUDIT_OVERSIZE ERROR is mandatory on every break (RFC §8): emit it
+		// through the underlying wrapper directly, NOT via this.error(), so it is
+		// never suppressed by the active log level (e.g. at 'critical'/'quiet').
+		// Without this, a break could ship chunk lines while silently dropping
+		// the high-visibility alert that signals the oversize must be fixed.
+		this.logger(
+			'ERROR',
 			`[OZLogger] AUDIT_OVERSIZE audit_id=${id}: the audit record exceeded ` +
 				`the ${SAFE_LINE_BYTES} bytes safe line limit and was broken into ` +
 				`${header.chunk_total} part(s). This is a contingency, not a feature; ` +
