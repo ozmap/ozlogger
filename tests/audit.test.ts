@@ -159,19 +159,6 @@ describe('audit (VictoriaLogs ingestion contract)', () => {
 	});
 
 	describe('runtime data problems are dropped with an error (never crash)', () => {
-		test('drops an oversized body and logs an error with the audit_id', () => {
-			const huge = { blob: 'x'.repeat(300 * 1024) };
-
-			expect(() => logger.audit('oversize', huge)).not.toThrow();
-
-			// The audit record is dropped; only the error log is emitted.
-			expect(logged.length).toBe(1);
-			const output = JSON.parse(logged[0]);
-			expect(output.severityText).toBe('ERROR');
-			expect(output.body['0']).toContain('exceeds the safe limit');
-			expect(output.body['0']).toContain('audit_id=');
-		});
-
 		test('drops an unserializable body and logs an error', () => {
 			// BigInt cannot be serialized by JSON.stringify, so it fails at runtime.
 			const bad = { value: BigInt(9007199254740991) };
@@ -182,6 +169,108 @@ describe('audit (VictoriaLogs ingestion contract)', () => {
 			const output = JSON.parse(logged[0]);
 			expect(output.severityText).toBe('ERROR');
 			expect(output.body['0']).toContain('could not serialize');
+		});
+	});
+
+	describe('oversize contingency (RFC §8): break, never drop', () => {
+		test('breaks an oversized array field into correlated lines + ERROR', () => {
+			const ids = Array.from({ length: 60000 }, (_, i) => `id-${i}`);
+
+			expect(() =>
+				logger.audit('bulk.update', {
+					action: 'update',
+					affected_ids: ids
+				})
+			).not.toThrow();
+
+			const records = logged.map((l) => JSON.parse(l));
+			const error = records.find((r) => r.severityText === 'ERROR');
+			const header = records.find(
+				(r) => r.severityText === 'AUDIT' && r.chunked
+			);
+			const segments = records.filter(
+				(r) => r.severityText === 'AUDIT' && r.chunk_field !== undefined
+			);
+
+			// Nothing is dropped: header + segments + exactly one ERROR.
+			expect(header).toBeDefined();
+			expect(error).toBeDefined();
+			expect(
+				records.filter((r) => r.severityText === 'ERROR').length
+			).toBe(1);
+			expect(segments.length).toBeGreaterThan(0);
+
+			// The ERROR is the AUDIT_OVERSIZE signal carrying the audit_id (§11d).
+			expect(error.body['0']).toContain('AUDIT_OVERSIZE');
+			expect(error.body['0']).toContain(`audit_id=${header.audit_id}`);
+			expect(error.body['0']).toContain('§7');
+
+			// Header keeps the first level inline; the heavy field is a marker.
+			expect(header._msg).toBe('bulk.update');
+			expect(header.body.action).toBe('update');
+			expect(header.body.affected_ids.ref).toBe('body.affected_ids');
+			expect(header.chunk_total).toBe(segments.length);
+
+			// Correlation + sequencing; segments carry no _msg.
+			segments.forEach((seg) => {
+				expect(seg.audit_id).toBe(header.audit_id);
+				expect(seg.chunk_field).toBe('body.affected_ids');
+				expect(seg._msg).toBeUndefined();
+				expect(seg.pid).toBeUndefined();
+				expect(seg.traceId).toBeUndefined();
+			});
+
+			// Reconstruction by chunk_field rebuilds the original array.
+			const rebuilt = segments
+				.sort((a, b) => a.chunk_seq - b.chunk_seq)
+				.flatMap((seg) => seg.body.affected_ids);
+			expect(rebuilt).toEqual(ids);
+		});
+
+		test('breaks an oversized scalar/blob field into text segments', () => {
+			const blob = 'x'.repeat(260 * 1024);
+
+			logger.audit('export', { result_csv: blob });
+
+			const records = logged.map((l) => JSON.parse(l));
+			const segments = records.filter(
+				(r) => r.severityText === 'AUDIT' && r.chunk_part !== undefined
+			);
+			expect(segments.length).toBeGreaterThan(0);
+
+			const rebuilt = segments
+				.sort((a, b) => a.chunk_seq - b.chunk_seq)
+				.map((seg) => seg.chunk_part)
+				.join('');
+			expect(rebuilt).toBe(blob);
+		});
+	});
+
+	describe('auditChunked (deprecated import contingency, RFC §9)', () => {
+		test('a body that fits takes the normal single-line path (no chunks, no ERROR)', () => {
+			logger.auditChunked('import.small', { count: 3 });
+
+			expect(logged.length).toBe(1);
+			const output = JSON.parse(logged[0]);
+			expect(output.severityText).toBe('AUDIT');
+			expect(output._msg).toBe('import.small');
+			expect(output.body).toEqual({ count: 3 });
+			expect(output.chunked).toBeUndefined();
+			expect(output.chunk_field).toBeUndefined();
+		});
+
+		test('an oversized body is broken using the same util + ERROR', () => {
+			const ids = Array.from({ length: 60000 }, (_, i) => `id-${i}`);
+
+			logger.auditChunked('import.bulk', { ids });
+
+			const records = logged.map((l) => JSON.parse(l));
+			expect(records.some((r) => r.chunked)).toBe(true);
+			expect(
+				records.filter((r) => r.severityText === 'ERROR').length
+			).toBe(1);
+			const error = records.find((r) => r.severityText === 'ERROR');
+			expect(error.body['0']).toContain('AUDIT_OVERSIZE');
 		});
 	});
 
