@@ -395,23 +395,77 @@ Níveis deprecados (serão removidos em 0.3.x):
 ### Métodos de Logging
 
 ```typescript
-logger.debug(...args: unknown[]): void   // Nível DEBUG
-logger.info(...args: unknown[]): void    // Nível INFO
-logger.audit(data: unknown): void        // Nível AUDIT — apenas UM argumento (qualquer tipo)
-logger.warn(...args: unknown[]): void    // Nível WARNING
-logger.error(...args: unknown[]): void   // Nível ERROR
+logger.debug(...args: unknown[]): void          // Nível DEBUG
+logger.info(...args: unknown[]): void           // Nível INFO
+logger.audit(_msg: string, body: unknown): void // Nível AUDIT — assinatura fixa (mensagem, corpo)
+logger.warn(...args: unknown[]): void           // Nível WARNING
+logger.error(...args: unknown[]): void          // Nível ERROR
 ```
 
-> **Sobre o `audit`:** diferente dos demais métodos (que herdaram o estilo `console.log(a, b, c)`), o `audit()` é o ponto de entrada para o **VictoriaLogs** e aceita **exatamente um argumento** — de qualquer tipo (objeto, string, número, etc.), escrito como está no stdout para ingestão. Ele não faz parsing nem trata múltiplos argumentos. Chamar `audit()` com um número de argumentos diferente de um **lança um erro** (é erro de programação, deve aparecer em dev/test). Um body acima do limite seguro, ou que não seja serializável, é **descartado com um log de ERROR**, sem derrubar o processo. Para bases indexadas, prefira enviar um objeto com labels bem definidos (veja abaixo).
+> **Sobre o `audit`:** diferente dos demais métodos (que herdaram o estilo `console.log(a, b, c)`), o `audit()` é o ponto de entrada para o **VictoriaLogs** e tem uma **assinatura fixa `audit(_msg, body)`**: o primeiro argumento é a **mensagem** (sempre uma `string`, usada pelo VictoriaLogs como texto exibido e alvo padrão da busca); o segundo é o **corpo**, atribuído **inteiro** ao campo `body` (objeto vira `body.*`; escalar vira o próprio valor). Não há mais o estilo variádico nem o campo `body.0`. Cada registro recebe um `audit_id` (ULID) e um envelope reservado — chaves do chamador ficam contidas no `body` e **não conseguem sobrescrever** os metadados. Chamar `audit()` com aridade diferente de dois, ou com uma mensagem que não seja `string`, **lança um erro** (erro de programação, deve aparecer em dev/test). Um corpo que não seja serializável é descartado com um ERROR (sem derrubar o processo); um corpo **acima do limite seguro não é perdido**: é **quebrado** em linhas de até ~200KB e sinalizado com um ERROR `AUDIT_OVERSIZE` (ver [Auditoria e bases de logs](#auditoria-e-bases-de-logs-victorialogs--loki--signoz)).
+
+```jsonc
+// audit("alice login", { action: "login", user: "alice" }) produz:
+{
+	"_time": "2026-06-24T14:32:10.512Z",
+	"level": "AUDIT",
+	"severityText": "AUDIT",
+	"severityNumber": 12,
+	"tag": "MeuApp",
+	"audit_id": "01J8Z9K3F7AB...",
+	"_msg": "alice login",
+	"body": { "action": "login", "user": "alice" }
+}
+```
 
 ### Auditoria e bases de logs (VictoriaLogs / Loki / SigNoz)
 
 O `audit` foi pensado para alimentar bases de logs indexadas (VictoriaLogs, Loki, SigNoz). Para que a indexação e os dashboards funcionem bem, siga estas práticas:
 
-- **Use labels/campos bem definidos e estáveis.** Essas bases indexam por labels/campos. Prefira um conjunto pequeno e consistente de chaves (ex.: `action`, `entity`, `entityId`, `userId`, `result`) em vez de chaves dinâmicas ou ilimitadas. Labels de alta cardinalidade (um valor diferente de chave por requisição) degradam a indexação e o desempenho das consultas.
-- **Não inclua dados que já são gerados automaticamente.** Não coloque `timestamp`, `traceId`, `spanId`, `pid`, `ppid`, `severity`/`level` nem o `tag` dentro do objeto do `audit`. Esses campos já são adicionados pelo próprio logger (contexto, severidade e timestamp) e/ou pelo VictoriaLogs no momento da ingestão. Duplicá-los gera conflito, ruído e ocupa espaço à toa.
-- **Mantenha o body pequeno.** O VictoriaLogs descarta linhas acima de `-insert.maxLineSizeBytes` (256KB por padrão) e trata registros próximos de 2MB de forma ineficiente. O OZLogger limita o body do `audit` a **256KB** (`DEFAULT_AUDIT_MAX_BYTES`); acima disso o registro é descartado e um ERROR é logado. Audite apenas o que é relevante para a trilha de auditoria — não envie payloads inteiros de requisição/resposta.
-- **Envie dados estruturados, não strings concatenadas.** Como o destino indexa por campos, prefira `logger.audit({ action: 'login', userId: 42 })` a `logger.audit({ msg: 'login user 42' })`.
+- **Use labels/campos bem definidos e estáveis.** Essas bases indexam por labels/campos. Prefira um conjunto pequeno e consistente de chaves, em snake_case (ex.: `action`, `entity_type`, `entity_id`, `user_id`, `result`) em vez de chaves dinâmicas ou ilimitadas. Labels de alta cardinalidade (um valor diferente de chave por requisição) degradam a indexação e o desempenho das consultas. Como _stream fields_, use apenas campos de baixa cardinalidade — `_stream_fields=tag,level` (`audit_id` e `body.entity_id` já são indexados nativamente como campos comuns).
+- **Não inclua dados que já são gerados automaticamente.** Não coloque `traceId`, `spanId`, `pid`, `ppid`, `host` nem `tenant` dentro do `body`. Esses campos **não fazem parte do canal de auditoria** (são tratados no caminho do SigNoz, via Fluent Bit). O envelope já fornece `_time`, `level`/`severityText`/`severityNumber`, `tag`, `audit_id` e `_msg` — não os duplique no `body`.
+- **Audite a intenção, não os dados expandidos (mantém o body pequeno).** O VictoriaLogs descarta linhas acima de `-insert.maxLineSizeBytes` (256KB por padrão) e trata registros próximos de 2MB de forma ineficiente. A forma correta de não exceder o limite é **não produzir registros grandes**: quando a seleção é por filtro, registre o **filtro e a contagem** (ex.: "atualização de N itens correspondentes ao filtro X") — **nunca** os identificadores resolvidos nem a consulta bruta expandida. Acima do limite seguro (~200KB), o OZLogger **não descarta**: ele **quebra** o registro em linhas de até ~200KB e emite um ERROR `AUDIT_OVERSIZE` — sinal de que a auditoria deve ser corrigida na origem (a quebra é contingência, não recurso).
+- **Envie dados estruturados, não strings concatenadas.** Como o destino indexa por campos, prefira `logger.audit('login', { action: 'login', userId: 42 })` a `logger.audit('login', { msg: 'login user 42' })`.
+
+#### Dados sensíveis
+
+A auditoria é um canal **local** (uma instância do VictoriaLogs por cliente, host único, um único tenant) — não há risco de vazamento entre clientes. Por isso:
+
+- **Redija apenas senhas e segredos** (tokens, chaves de API, credenciais) — uma credencial exposta é perigosa em qualquer contexto. Use o utilitário [`filter()`](#filter---remover-campos) na emissão para removê-los.
+- **E-mail, CPF e demais dados pessoais permanecem visíveis** — são dados do próprio cliente, no ambiente dele. **Não** mascare nem remova PII; o logger nunca aplica máscara automática no caminho de auditoria.
+
+#### Consultas (LogsQL)
+
+Na ingestão, o VictoriaLogs **achata o `body` em `body.*`** e indexa cada campo. Exemplos:
+
+```text
+# autoria de uma ação nas últimas 24h
+_time:24h level:=AUDIT body.action:=client.import | fields _time, _msg, body.affected_count
+
+# conteúdo completo de uma operação (cabeçalho + segmentos da quebra)
+level:=AUDIT audit_id:=01J8Z9K3F7AB...
+
+# verificar se o item 12345 foi afetado por uma operação em lote
+level:=AUDIT audit_id:=01J8Z9K3F7AB... json_array_contains_any(body.affected_ids, "12345")
+
+# ocorrências de quebra (devem ser raras — cada uma é uma auditoria a corrigir na origem)
+level:=ERROR _msg:~"AUDIT_OVERSIZE" | fields _time, _msg
+```
+
+#### O que vai no corpo (resumo)
+
+| Tipo de dado | No corpo | Se exceder | Não permitido |
+| --- | --- | --- | --- |
+| Identidade, ação e contagem | ✓ inline | — | — |
+| Seleção por filtro | ✓ critério e contagem | — | identificadores resolvidos |
+| Array de grande porte | cabeçalho + marcador | quebra (array JSON) + ERROR | array completo em uma linha |
+| Escalar/blob de grande porte | marcador (`ref`/`bytes`/`sha1`) | quebra (frações de texto) + ERROR | valor bruto inline |
+| Consulta bruta (`$in` expandido) | — | — | de forma literal |
+| `traceId`/`spanId`/`host`/`tenant`/`pid`/`ppid` | — | — | no envelope de auditoria |
+| Senha, token, segredo, chave | — | — | **redigir** (`filter()`) |
+| E-mail, CPF e dados pessoais | ✓ visíveis (auditoria local) | — | — |
+
+> Referência completa: [`docs/rfc/RFC-OZLOGGER-AUDIT-001.md`](docs/rfc/RFC-OZLOGGER-AUDIT-001.md).
 
 ### Métodos de Timing
 
@@ -607,7 +661,7 @@ The available logging methods are presented in hierarchy level order.
 
  - `.debug(...messages: any[])`
  - `.info(...messages: any[])`
- - `.audit(...messages: any[])`
+ - `.audit(_msg: string, body: unknown)`
  - `.warn(...messages: any[])`
  - `.error(...messages: any[])`
 
