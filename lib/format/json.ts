@@ -81,6 +81,34 @@ export function json<TScope extends Logger>(
 		// isolate serialization and the underlying (possibly app-provided)
 		// client behind a try/catch.
 		try {
+			// Audit is the VictoriaLogs ingestion entrypoint and uses a clean,
+			// reserved envelope: the body is assigned whole (no `body.0`), no
+			// OpenTelemetry/process context is injected, and `_time` is always
+			// present. The caller passes only the audit-specific fields
+			// (audit_id, _msg, body and any chunk_* metadata); the envelope
+			// fields are fixed here, so caller keys (nested under `body`) can
+			// never overwrite metadata.
+			if (level === 'AUDIT') {
+				const fields =
+					typeof args[0] === 'object' && args[0] !== null
+						? (args[0] as Record<string, unknown>)
+						: { _msg: args[0] };
+
+				const entry = {
+					_time: new Date().toISOString(),
+					level /** @deprecated Use 'severityText' instead. */,
+					severityText: level,
+					severityNumber: LogLevels.audit,
+					tag,
+					...fields
+				};
+
+				logger.log(
+					paint[level](JSON.stringify(entry, getCircularReplacer()))
+				);
+				return;
+			}
+
 			const payload = toStructuredJsonLog.call(this, level, now, tag);
 
 			for (const arg of args) {

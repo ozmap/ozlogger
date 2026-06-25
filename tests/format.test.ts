@@ -130,7 +130,7 @@ describe('JSON Formatter', () => {
 		});
 
 		test('audit level', () => {
-			logger.audit({ msg: 'audit msg' });
+			logger.audit('audit msg', { msg: 'audit msg' });
 			const output = JSON.parse(logged[0]);
 			expect(output.severityText).toBe('AUDIT');
 			expect(output.severityNumber).toBe(12);
@@ -194,6 +194,32 @@ describe('Text Formatter', () => {
 	test('should join multiple arguments with space', () => {
 		logger.info('one', 'two', 'three');
 		expect(logged[0]).toContain('one two three');
+	});
+
+	test('should render audit as message followed by the body', () => {
+		logger.audit('signin', { account: 'alice' });
+		expect(logged.length).toBe(1);
+		expect(logged[0]).toContain('[AUDIT]');
+		expect(logged[0]).toContain('TEXT-TEST');
+		expect(logged[0]).toContain('signin');
+		// A body-only token proves the body half of the line is rendered
+		// (not just the message).
+		expect(logged[0]).toContain('account');
+		expect(logged[0]).toContain('alice');
+	});
+
+	test('should render a scalar audit body', () => {
+		logger.audit('the answer', 42);
+		expect(logged[0]).toContain('[AUDIT]');
+		expect(logged[0]).toContain('the answer');
+		expect(logged[0]).toContain('42');
+	});
+
+	test('should render audit timeEnd without throwing', () => {
+		logger.time('op');
+		expect(() => logger.audit.timeEnd('op')).not.toThrow();
+		expect(logged[0]).toContain('[AUDIT]');
+		expect(logged[0]).toContain('op:');
 	});
 });
 

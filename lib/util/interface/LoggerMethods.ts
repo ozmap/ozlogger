@@ -10,12 +10,14 @@ export type LogMethod = ((...args: unknown[]) => void) & {
  * Audit logging method.
  *
  * Unlike the other log methods, audit() is the entrypoint for VictoriaLogs
- * ingestion and accepts exactly ONE argument — of any type (object, string,
- * number, etc.). Calling it with a different number of arguments throws, since
- * that is a programming error and should surface in dev/test. The attached
- * timeEnd() preserves the timer helper available on the other methods.
+ * ingestion and has a FIXED signature audit(_msg, body): the first argument is
+ * always the message string, the second is the record body (assigned whole, so
+ * caller keys can never overwrite the envelope). Calling it with a different
+ * number of arguments — or a non-string message — throws, since that is a
+ * programming error and should surface in dev/test. The attached timeEnd()
+ * preserves the timer helper available on the other methods.
  */
-export type AuditMethod = ((data: unknown) => void) & {
+export type AuditMethod = ((_msg: string, body: unknown) => void) & {
 	timeEnd(id: string): Logger;
 };
 
