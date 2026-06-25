@@ -1,6 +1,17 @@
 import { createLogger, Logger } from './Logger';
 import { mask, filter } from './util/Objects';
 import {
+	SAFE_LINE_BYTES,
+	auditId,
+	byteLen,
+	heavyMarker,
+	splitFirstLevel,
+	chunkArrayByBytes,
+	chunkStringByBytes,
+	countChunks,
+	splitAuditBody
+} from './util/AuditChunk';
+import {
 	getServerPort,
 	getServerInstance,
 	resetServerState
@@ -9,6 +20,17 @@ import {
 // Re-export for ESM
 export { createLogger, Logger };
 export { mask, filter };
+export {
+	SAFE_LINE_BYTES,
+	auditId,
+	byteLen,
+	heavyMarker,
+	splitFirstLevel,
+	chunkArrayByBytes,
+	chunkStringByBytes,
+	countChunks,
+	splitAuditBody
+};
 export { getServerPort, getServerInstance, resetServerState };
 
 // Default export for ESM
@@ -20,6 +42,15 @@ const moduleExport = Object.assign(createLogger, {
 	Logger,
 	mask,
 	filter,
+	SAFE_LINE_BYTES,
+	auditId,
+	byteLen,
+	heavyMarker,
+	splitFirstLevel,
+	chunkArrayByBytes,
+	chunkStringByBytes,
+	countChunks,
+	splitAuditBody,
 	getServerPort,
 	getServerInstance,
 	resetServerState,
