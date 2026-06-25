@@ -26,6 +26,14 @@ Cada task segue a estrutura:
 | [045](task-045-log-rotation/) | [#45](https://github.com/ozmap/ozlogger/issues/45) | Log Rotation | 🟡 Média | Bloqueado (#44) |
 | [046](task-046-internal-metrics/) | [#46](https://github.com/ozmap/ozlogger/issues/46) | Métricas Internas | 🟡 Média | Não Iniciado |
 | [047](task-047-jsdoc-docs/) | [#47](https://github.com/ozmap/ozlogger/issues/47) | Docs JSDoc | 🟢 Baixa | Não Iniciado |
+| [088](task-088-audit-chunk-util/) | [#88](https://github.com/ozmap/logger/issues/88) | Util de Quebra de Logs (AuditChunk) | 🔴 Crítico | Não Iniciado |
+| [089](task-089-audit-signature/) | [#89](https://github.com/ozmap/logger/issues/89) | Assinatura `audit(_msg, body)` e Envelope | 🔴 Crítico | Não Iniciado |
+| [090](task-090-audit-oversize-contingency/) | [#90](https://github.com/ozmap/logger/issues/90) | Contingência de Quebra + ERROR AUDIT_OVERSIZE | 🟠 Alta | Bloqueado (#88, #89) |
+| [091](task-091-audit-rfc-docs/) | [#91](https://github.com/ozmap/logger/issues/91) | Docs do Padrão de Auditoria (RFC-001) | 🟢 Baixa | Bloqueado (#89) |
+
+> **RFC [OZLOGGER-AUDIT-001](../rfc/RFC-OZLOGGER-AUDIT-001.md):** as tasks #88–#91 implementam o
+> padrão de auditoria (assinatura `audit(_msg, body)`, fim do `body.0`, contingência de quebra).
+> O conjunto mínimo de **código** é #88 → #89 → #90; a #91 é doc-only e opcional.
 
 ## Prioridades
 
@@ -45,6 +53,13 @@ flowchart TD
     T034 --> T037["#37\nProcess Hang"]
     T037 --> T038["#38\nHTTP Port"]
     T038 --> T039["#39\nTimer ID"]
+
+    subgraph RFC["RFC-OZLOGGER-AUDIT-001"]
+        T088["#88\nAuditChunk util"] --> T090["#90\nContingência + ERROR"]
+        T089["#89\naudit(_msg, body)"] --> T090
+        T088 -.audit_id/envelope.-> T089
+        T089 --> T091["#91\nDocs (opcional)"]
+    end
 ```
 
 ## Como Criar Nova Task
