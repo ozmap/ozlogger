@@ -1,0 +1,140 @@
+# Repository secrets:
+# SONAR_HOST_URL
+# SONAR_TOKEN
+# GH_PAT (checkout do ozflow)
+#
+# Este repositório é PÚBLICO: repo público não resolve action de repo privado
+# via `uses:` (o Actions access de organização só vale entre repos privados),
+# então o ozflow é baixado via checkout autenticado com GH_PAT, como no ozmap.
+# PRs de fork não recebem secrets — o scan só roda em branches internas.
+
+name: SonarQube Analysis
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+  push:
+    branches:
+      - develop
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  sonarqube:
+    name: Run SonarQube Analysis
+    runs-on: ubuntu-latest
+    env:
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # PR que só altera docs/workflows não roda dependências, testes nem scan.
+      # Em push na develop tudo roda.
+      - name: Detect changed scopes
+        id: scopes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          if git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -qvE '^(\.github/|docs/|.*\.md$)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pnpm
+        if: steps.scopes.outputs.code == 'true'
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        if: steps.scopes.outputs.code == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.scopes.outputs.code == 'true'
+        run: pnpm install
+
+      # Gera coverage/lcov.info para o Sonar (sonar.javascript.lcov.reportPaths).
+      # Não bloqueia o scan: sem lcov o gate acusa cobertura ausente no new code.
+      - name: Run tests with coverage
+        if: steps.scopes.outputs.code == 'true'
+        run: pnpm test
+        timeout-minutes: 10
+        continue-on-error: true
+
+      # Com node_modules presente, o analisador TS carrega o grafo de tipos das
+      # dependências e o processo Node estoura a memória do runner.
+      # O scan não precisa de node_modules; sem ele a análise fica leve.
+      - name: Remove node_modules before scan
+        if: steps.scopes.outputs.code == 'true'
+        run: rm -rf node_modules
+
+      # Cache do scanner (plugins + runtime Node do analisador), preenchido pelo
+      # scan.sh do ozflow; chave rolante para restaurar sempre o mais recente.
+      - name: Restore scanner cache
+        if: steps.scopes.outputs.code == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .sonar-scanner-cache
+          key: sonar-scanner-cache-${{ github.run_id }}
+          restore-keys: |
+            sonar-scanner-cache-
+
+      - name: Fetch OzFlow
+        if: steps.scopes.outputs.code == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ozmap/ozflow
+          ref: main
+          token: ${{ secrets.GH_PAT }}
+          path: .github/actions/ozflow
+          sparse-checkout: |
+            actions/sonarqube-scan/
+          sparse-checkout-cone-mode: false
+
+      - name: Run SonarQube Analysis
+        if: steps.scopes.outputs.code == 'true'
+        uses: ./.github/actions/ozflow/actions/sonarqube-scan
+        with:
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          sonar-host: ${{ secrets.SONAR_HOST_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          paths: '["./"]'
+
+      # Só persiste cache com conteúdo: um scan abortado antes de baixar o JRE
+      # deixa o diretório vazio e, pela chave rolante, esse cache passaria a ser
+      # restaurado por todos os runs seguintes. Só o push na develop grava: o PR
+      # reaproveita esse cache sem subir uma cópia por run.
+      # Checagem via shell em vez de hashFiles(): o container do scanner deixa
+      # arquivos sem permissão de leitura para o runner e hashFiles() aborta o
+      # job inteiro; o chown também garante que o tar do actions/cache leia tudo.
+      - name: Check scanner cache content
+        if: always() && github.event_name == 'push' && steps.scopes.outputs.code == 'true'
+        id: scanner-cache
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" .sonar-scanner-cache 2>/dev/null || true
+          if [ -n "$(ls -A .sonar-scanner-cache/cache 2>/dev/null)" ]; then
+            echo "has-content=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save scanner cache
+        if: always() && steps.scanner-cache.outputs.has-content == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .sonar-scanner-cache
+          key: sonar-scanner-cache-${{ github.run_id }}
