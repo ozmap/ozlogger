@@ -1,9 +1,12 @@
 # Repository secrets:
 # SONAR_HOST_URL
 # SONAR_TOKEN
+# GH_PAT (checkout do ozflow)
 #
-# A action sonarqube-scan vem do ozflow (privado) direto via `uses:`;
-# requer "Actions access: organization" habilitado no repositório ozflow.
+# Este repositório é PÚBLICO: repo público não resolve action de repo privado
+# via `uses:` (o Actions access de organização só vale entre repos privados),
+# então o ozflow é baixado via checkout autenticado com GH_PAT, como no ozmap.
+# PRs de fork não recebem secrets — o scan só roda em branches internas.
 
 name: SonarQube Analysis
 
@@ -92,9 +95,21 @@ jobs:
           restore-keys: |
             sonar-scanner-cache-
 
+      - name: Fetch OzFlow
+        if: steps.scopes.outputs.code == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ozmap/ozflow
+          ref: main
+          token: ${{ secrets.GH_PAT }}
+          path: .github/actions/ozflow
+          sparse-checkout: |
+            actions/sonarqube-scan/
+          sparse-checkout-cone-mode: false
+
       - name: Run SonarQube Analysis
         if: steps.scopes.outputs.code == 'true'
-        uses: ozmap/ozflow/actions/sonarqube-scan@main
+        uses: ./.github/actions/ozflow/actions/sonarqube-scan
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           sonar-host: ${{ secrets.SONAR_HOST_URL }}
